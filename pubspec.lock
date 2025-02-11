@@ -122,7 +122,7 @@ packages:
       
       url: "https://pub.dev"
     source: hosted
-    
+
   leak_tracker:
     dependency: transitive
     description:
@@ -319,6 +319,7 @@ packages:
       sha256: "5c5f338a667b4c644744b661f309fb8080bb94b18a7e91ef1dbd343bed00ed6d"
       url: "https://pub.dev"
     source: hosted
+
   web:
     dependency: transitive
     description:
