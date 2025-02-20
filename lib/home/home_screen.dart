@@ -1,5 +1,6 @@
 // lib/home/home_screen.dart
 import 'package:flutter/material.dart';
+import 'package:sevenc_iteration_two/home/components/meetings/meeting_page.dart';
 import 'components/components.dart';
 
 class Home extends StatefulWidget {
@@ -306,7 +307,7 @@ class _HomeState extends State<Home> {
   }
 
   Widget createMeetings() {
-    return Container();
+    return const MeetingPage();
   }
 
   Widget createAddTaskBody() {
