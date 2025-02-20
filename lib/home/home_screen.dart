@@ -166,28 +166,29 @@ class _HomeState extends State<Home> {
           ),
           const SizedBox(height: 16),
           // Middle row with Kanban
-// Middle row with Kanban
           Expanded(
             flex: 3,
-            child: Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      "My Tasks",
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(minHeight: 1500),
+              child: Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        "My Tasks",
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 16),
-                    const Expanded(
-                      child:
-                          KanbanBoard(), // Replace the Row containing _buildKanbanColumn with this
-                    ),
-                  ],
+                      const SizedBox(height: 16),
+                      const Expanded(
+                        child: KanbanBoard(),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -283,7 +284,6 @@ class _HomeState extends State<Home> {
     );
   }
 
-  // Your existing methods remain exactly the same from here...
   Widget createProjectTimerCountdown() {
     return const Text("PLACEHOLDER");
   }
