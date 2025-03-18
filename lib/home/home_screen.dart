@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:sevenc_iteration_two/home/components/meetings/meeting_page.dart';
 import 'components/components.dart';
+import 'components/compact/compact_components.dart';
 
 class Home extends StatefulWidget {
   const Home({super.key});
@@ -24,142 +25,19 @@ class _HomeState extends State<Home> {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // Projects List
+                // Projects List - Compact Version
                 Expanded(
-                  child: Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              const Text(
-                                "Projects",
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              IconButton(
-                                icon: const Icon(Icons.add),
-                                onPressed: () {},
-                              ),
-                            ],
-                          ),
-                          Expanded(
-                            child: ListView.builder(
-                              itemCount: 3,
-                              itemBuilder: (context, index) {
-                                return Card(
-                                  child: ListTile(
-                                    title: Text("Project ${index + 1}"),
-                                    subtitle: const Text("5 members"),
-                                    trailing: const Text("75%"),
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
+                  child: CompactProjectList(),
                 ),
                 const SizedBox(width: 16),
-                // Groups List
+                // Groups List - Compact Version
                 Expanded(
-                  child: Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              const Text(
-                                "Groups",
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              IconButton(
-                                icon: const Icon(Icons.add),
-                                onPressed: () {},
-                              ),
-                            ],
-                          ),
-                          Expanded(
-                            child: ListView.builder(
-                              itemCount: 3,
-                              itemBuilder: (context, index) {
-                                return Card(
-                                  child: ListTile(
-                                    title: Text("Group ${index + 1}"),
-                                    subtitle: const Text("8 members"),
-                                    trailing: Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 8,
-                                        vertical: 4,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: Colors.green[100],
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                      child: const Text(
-                                        "Active",
-                                        style: TextStyle(color: Colors.green),
-                                      ),
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
+                  child: CompactGroupsList(),
                 ),
                 const SizedBox(width: 16),
-                // Activity Tracker
+                // Activity Tracker - Compact Version
                 Expanded(
-                  child: Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            "Recent Activity",
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          Expanded(
-                            child: ListView.builder(
-                              itemCount: 5,
-                              itemBuilder: (context, index) {
-                                return ListTile(
-                                  leading: CircleAvatar(
-                                    backgroundColor: Colors.blue[100],
-                                    child: const Icon(Icons.person),
-                                  ),
-                                  title:
-                                      const Text("John Doe completed a task"),
-                                  subtitle: Text("${index + 1} hours ago"),
-                                );
-                              },
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
+                  child: CompactActivityTracker(),
                 ),
               ],
             ),
@@ -197,90 +75,10 @@ class _HomeState extends State<Home> {
           // Bottom row with deadline manager
           Expanded(
             flex: 2,
-            child: Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text(
-                          "Upcoming Deadlines",
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        TextButton.icon(
-                          onPressed: () {},
-                          icon: const Icon(Icons.calendar_today),
-                          label: const Text("View Calendar"),
-                        ),
-                      ],
-                    ),
-                    Expanded(
-                      child: ListView(
-                        children: [
-                          _buildDeadlineSection("Today"),
-                          const SizedBox(height: 16),
-                          _buildDeadlineSection("Tomorrow"),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+            child: const DeadlineManager(),
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildDeadlineSection(String day) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          day,
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: List.generate(
-            2,
-            (index) => Container(
-              width: 200,
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.grey[100],
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text("Task ${index + 1}"),
-                  const Text("Project Alpha"),
-                  Row(
-                    children: const [
-                      Icon(Icons.access_time, size: 16),
-                      SizedBox(width: 4),
-                      Text("2:00 PM"),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ],
     );
   }
 
