@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../Objects/task.dart';
+import '../models/task/task.dart'; // Updated import path to new Task model
 
 class TaskProvider extends ChangeNotifier {
   final List<Task> _tasks = [];

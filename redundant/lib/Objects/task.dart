@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-enum NotificationFrequency { daily, weekly, monthly, none }
+import '../common/enums/notification_frequency.dart';
+
 class Task with ChangeNotifier {
 
   String title;
@@ -26,13 +27,13 @@ class Task with ChangeNotifier {
     required this.endDate,
     required this.description,
     required this.members,
-    required this.notificationPreference ,
-    required this.notificationFrequency ,
+    required this.notificationPreference,
+    required this.notificationFrequency,
     required this.directoryPath,
-  List<String>? comments,
+    List<String>? comments,
   })  :  comments = comments ?? [] {
     
-    if ( endDate.isBefore(startDate)) {
+    if (endDate.isBefore(startDate)) {
       throw ArgumentError("End date must be after start date.");
     }
     if (description.length > 400) {

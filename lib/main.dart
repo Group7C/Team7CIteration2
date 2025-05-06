@@ -1,14 +1,17 @@
 import "package:flutter/material.dart";
 import 'package:provider/provider.dart';
-import 'package:sevenc_iteration_two/testingNavigation.dart';
+// Removed import for testingNavigation.dart that was moved to redundant
 import 'package:postgres/postgres.dart';
 import 'package:sevenc_iteration_two/usser/usserObject.dart';
 import './login/login.dart';
 import './join/join.dart';
-import './home/home.dart';
+import './features/home/home_feature.dart';
+import './features/navigation/main_navigation.dart';
+import './features/navigation/navigation_service.dart';
 import 'providers/theme_provider.dart';
 import 'providers/tasks_provider.dart';
 import 'usser/usserProfilePage.dart';
+import 'settings_page.dart';
 import 'join/project.dart';
 
 void main() {
@@ -34,13 +37,17 @@ class MyApp extends StatelessWidget {
     final themeProvider = Provider.of<ThemeProvider>(context);
 
     return MaterialApp(
+      navigatorKey: NavigationService().navigatorKey,  // Add navigator key
       theme: themeProvider.currentTheme, // Set theme based on provider
       initialRoute: "/login",
       routes: {
-        "/home": (context) => const Home(),
-        "/navigation": (context) => const NavigationPage(),
+        "/home": (context) => const MainNavigation(),  // Use MainNavigation
+        // Navigation route removed as NavigationPage was moved to redundant
+        // "/navigation": (context) => const NavigationPage(),
         "/login": (context) => const LoginScreen(),
         "/join": (context) => const JoinProject(),
+        "/settings": (context) => const SettingsPage(),
+        "/profile": (context) => UsserProfile(usser: Provider.of<Usser>(context)),
       },
     );
   }

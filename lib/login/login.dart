@@ -138,14 +138,16 @@ class _LoginScreenState extends State<LoginScreen> {
               print(".$projects.");
 
               // projects will be '[]' if it has no projects
-              if (projects == '[]\n') {
-                print("projects equal");
-                Navigator.pushNamed(context, "/join");
-              }
-              else {
-                print("projects not equal");
-                Navigator.pushNamed(context, "/home");
-              }
+              // Changing to go to home by default instead regardless of how many projects they have (Luke)
+              // if (projects == '[]\n') {
+              //   print("projects equal");
+              //   Navigator.pushNamed(context, "/join");
+              // }
+              // else {
+              //   print("projects not equal");
+              //   Navigator.pushNamed(context, "/home");
+              // }
+              Navigator.pushNamed(context, "/home");
 
             }
             else {
@@ -240,6 +242,20 @@ class _LoginScreenState extends State<LoginScreen> {
                       onPressed: submitAction,
                       style: ElevatedButton.styleFrom(backgroundColor: Colors.blue[800]),
                       child: const Text("confirm", style: TextStyle(color: Colors.white))),
+                  const SizedBox(height: 20,),
+                  
+                  // Temp button added by Luke for rapid test login
+                  ElevatedButton(
+                      onPressed: () {
+                        email.text = "testuser123456@gmail.com";
+                        password.text = "P@ssword123";
+                        submitAction();
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green[700],
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+                      ),
+                      child: const Text("Quick Login", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))),
                   const SizedBox(height: 20,),
                   // switch mode button
                   GestureDetector(
