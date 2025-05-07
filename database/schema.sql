@@ -31,7 +31,7 @@ CREATE TABLE ONLINE_USER (
 );
 
 
--- UPDATED TO INCLUDE DESCRIPTION FIELD
+-- DONE
 CREATE TABLE PROJECT (
     project_uid SERIAL PRIMARY KEY,
     join_code VARCHAR(10) NOT NULL,
@@ -40,8 +40,7 @@ CREATE TABLE PROJECT (
     notification_preference notification_enum NOT NULL ,
     google_drive_link VARCHAR(200),
     discord_link VARCHAR(200),
-    uuid VARCHAR(50) NOT NULL,
-    description VARCHAR(500)
+    uuid VARCHAR(50) NOT NULL
 );
 
 
@@ -83,7 +82,7 @@ CREATE TABLE PROJECT_MEMBERS (
 
 
 -- DONE
-CREATE TABLE TASK (    
+CREATE TABLE TASK (
     task_id SERIAL PRIMARY KEY,
     project_uid INT NOT NULL REFERENCES PROJECT(project_uid),
     task_name VARCHAR(50) NOT NULL,
@@ -95,24 +94,8 @@ CREATE TABLE TASK (
     end_date DATE NOT NULL,
     description VARCHAR(300),
     members VARCHAR(1000),
-    notification_frequency notification_enum NOT NULL,
-    status VARCHAR(20),
-    assignee_id INT
+    notification_frequency notification_enum NOT NULL
 );
-
-
--- New table for multiple task assignees
-CREATE TABLE TASK_ASSIGNEE (
-    id SERIAL PRIMARY KEY,
-    task_id INT NOT NULL REFERENCES TASK(task_id) ON DELETE CASCADE,
-    user_id INT NOT NULL REFERENCES ONLINE_USER(user_id) ON DELETE CASCADE,
-    role VARCHAR(50) NOT NULL DEFAULT 'Editor',
-    UNIQUE(task_id, user_id)
-);
-
--- Create indexes for better performance
-CREATE INDEX idx_task_assignee_task_id ON TASK_ASSIGNEE(task_id);
-CREATE INDEX idx_task_assignee_user_id ON TASK_ASSIGNEE(user_id);
 
 
 -- INTERSECTIONS BELOW
@@ -135,3 +118,11 @@ CREATE TABLE TASK_MEMBERS (
     members_id INT NOT NULL REFERENCES PROJECT_MEMBERS(members_id),
     PRIMARY KEY (task_id, members_id)
 );
+
+-- UPDATE FOR TASKS
+
+-- STATUS ENUM
+CREATE TYPE task_status_enum AS ENUM ('to_do', 'in_progress', 'complete');
+
+-- STATUS COLUMN
+ALTER TABLE TASK ADD COLUMN status task_status_enum NOT NULL DEFAULT 'to_do';

@@ -5,9 +5,9 @@ import 'package:intl/intl.dart';
 import 'settings_page.dart';
 import '../providers/tasks_provider.dart';
 import '../Objects/task.dart';
-import 'components/components.dart';
-import 'components/compact/compact_components.dart';
-import 'components/add_task_screen.dart';
+import '../../redundant/components/components.dart';
+import '../../redundant/components/compact/compact_components.dart';
+import '../../redundant/components/add_task_screen.dart';
 
 enum Role { editor, reader }
 

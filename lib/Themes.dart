@@ -51,12 +51,67 @@ class AppTheme {
     return theme(customScheme(surfaceColor, textColor));
   }
 
-// method to build ThemeData
   ThemeData theme(ColorScheme colorScheme) {
     return ThemeData(
+      useMaterial3: true,
       colorScheme: colorScheme,
       textTheme: textTheme,
-      // Customize other theme properties if needed
+      // Apply theme to common components
+      cardTheme: CardTheme(
+        color: colorScheme.surface,
+        elevation: 2,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      ),
+      appBarTheme: AppBarTheme(
+        backgroundColor: colorScheme.surface,
+        foregroundColor: colorScheme.onSurface,
+        elevation: 0,
+      ),
+      scaffoldBackgroundColor: colorScheme.surfaceDim,
+      dialogTheme: DialogTheme(
+        backgroundColor: colorScheme.surface,
+        surfaceTintColor: colorScheme.surfaceTint,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+      floatingActionButtonTheme: FloatingActionButtonThemeData(
+        backgroundColor: colorScheme.primary,
+        foregroundColor: colorScheme.onPrimary,
+      ),
+      listTileTheme: ListTileThemeData(
+        textColor: colorScheme.onSurface,
+        iconColor: colorScheme.primary,
+      ),
+      switchTheme: SwitchThemeData(
+        thumbColor: MaterialStateProperty.resolveWith<Color?>((states) {
+          if (states.contains(MaterialState.selected)) return colorScheme.primary;
+          return null;
+        }),
+        trackColor: MaterialStateProperty.resolveWith<Color?>((states) {
+          if (states.contains(MaterialState.selected)) return colorScheme.primaryContainer;
+          return null;
+        }),
+      ),
+      checkboxTheme: CheckboxThemeData(
+        fillColor: MaterialStateProperty.resolveWith<Color?>((states) {
+          if (states.contains(MaterialState.selected)) return colorScheme.primary;
+          return null;
+        }),
+      ),
+      radioTheme: RadioThemeData(
+        fillColor: MaterialStateProperty.resolveWith<Color?>((states) {
+          if (states.contains(MaterialState.selected)) return colorScheme.primary;
+          return null;
+        }),
+      ),
+      bottomNavigationBarTheme: BottomNavigationBarThemeData(
+        backgroundColor: colorScheme.surface,
+        selectedItemColor: colorScheme.primary,
+        unselectedItemColor: colorScheme.onSurfaceVariant.withOpacity(0.7),
+      ),
+      dividerTheme: DividerThemeData(
+        color: colorScheme.outline.withOpacity(0.5),
+      ),
+      // Customize other theme properties as needed
     );
   }
 

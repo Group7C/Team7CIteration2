@@ -39,6 +39,9 @@ dependencies:
   pdf: ^3.10.4
   url_launcher: ^6.2.5
   confetti: ^0.7.0
+  path_provider: ^2.1.2
+  open_file: ^3.3.2
+  universal_html: ^2.2.4
 
 
   # The following adds the Cupertino Icons font to your application.

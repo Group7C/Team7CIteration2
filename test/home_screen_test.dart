@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:sevenc_iteration_two/home/home_screen.dart';
+import '../redundant/home_screen.dart';
 
 void main() {
   testWidgets('Home screen renders without crashing', (WidgetTester tester) async {

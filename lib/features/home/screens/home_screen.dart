@@ -1,409 +1,374 @@
-import '../../projects/screens/project_detail_screen.dart';
 import 'package:flutter/material.dart';
-import '../containers/home_card_container.dart';
-import '../managers/home_content_manager.dart';
-import '../contents/groups_list_content.dart'; // Added import for GroupItem
-import 'package:http/http.dart' as http;
-import 'dart:convert';
+import 'package:provider/provider.dart';
+import '../../common/widgets/section_card.dart';
+import '../../common/widgets/item_card.dart';
+import '../../common/widgets/item_list.dart';
+import '../../common/widgets/horizontal_item_list.dart';
+import '../../common/models/project_model.dart';
+import '../../common/models/deadline_model.dart';
+import '../../common/models/group_model.dart';
+import '../../common/services/project_service.dart';
+import '../../common/services/project_navigation_service.dart';
+import '../../common/models/task_model.dart';
+import '../../common/services/task_service.dart';
+import '../widgets/group_card.dart';
+import '../../../usser/usserObject.dart';
+import '../../kanban/screens/kanban_board_screen.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  const HomeScreen({Key? key}) : super(key: key);
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  late Future<Widget> _projectsContent;
-  late Future<Widget> _groupsContent;
-  late Future<Widget> _activityContent;
-  late Future<Widget> _kanbanContent;
-  late Future<Widget> _deadlinesContent;
+  List<Project> userProjects = [];
+  List<Deadline> userDeadlines = [];
+  List<Task> userGroupTasks = [];
+  bool isLoadingProjects = true;
+  bool isLoadingDeadlines = true;
+  bool isLoadingGroupTasks = true;
+  String? projectsErrorMessage;
+  String? deadlinesErrorMessage;
+  String? groupTasksErrorMessage;
+  
+  // Helper function to count the number of members assigned to a task
+  int countTaskMembers(Task task) {
+    // If assignedMembers is available, use its length
+    if (task.assignedMembers.isNotEmpty) {
+      return task.assignedMembers.length;
+    }
+    
+    // If we have a members string, count the entries separated by commas
+    if (task.members != null && task.members!.isNotEmpty) {
+      return task.members!.split(',').length;
+    }
+    
+    // Default to 0 if no member information is found
+    return 0;
+  }
+  
+  // Debug version of countTaskMembers that prints details
+  int debugCountTaskMembers(Task task) {
+    print('Debug task ${task.taskId}: ${task.taskName}');
+    print('  - assignedMembers: ${task.assignedMembers.length} members');
+    for (var member in task.assignedMembers) {
+      print('    - memberId: ${member.membersId}, userId: ${member.userId}, username: ${member.username}');
+    }
+    print('  - members string: "${task.members}"');
+    
+    // Get the count
+    int count = 0;
+    if (task.assignedMembers.isNotEmpty) {
+      count = task.assignedMembers.length;
+    } else if (task.members != null && task.members!.isNotEmpty) {
+      count = task.members!.split(',').length;
+    }
+    print('  - Total count: $count');
+    return count;
+  }
   
   @override
   void initState() {
     super.initState();
-    _loadData();
+    _loadUserProjects();
+    _loadUserDeadlines();
+    _loadUserGroupTasks();
   }
   
-  void _loadData() {
-    setState(() {
-      _projectsContent = HomeContentManager.buildProjectsListContent(
-        context,
-        onProjectTap: (project) {
-          // Navigate to project details
-          if (project.id != null) {
-            _navigateToProjectDetails(context, project.id!);
-          }
-        },
-      );
-      
-      _groupsContent = HomeContentManager.buildGroupsListContent(
-        context,
-        onGroupTap: (group) {
-          // Show task collaborator details
-          _showCollaboratorDetails(context, group);
-        },
-      );
-      
-      _activityContent = HomeContentManager.buildActivityTrackerContent(context);
-      _kanbanContent = HomeContentManager.buildKanbanBoardContent(context);
-      _deadlinesContent = HomeContentManager.buildDeadlineManagerContent(
-        context,
-        onDeadlineTap: (deadline) {
-          // Navigate to the project associated with this deadline
-          if (deadline.id != null && deadline.id!.isNotEmpty) {
-            final projectId = deadline.id!.startsWith('project_') 
-                ? deadline.id!.substring(8) 
-                : deadline.projectId;
-                
-            if (projectId != null && projectId.isNotEmpty) {
-              _navigateToProjectDetails(context, projectId);
-            }
-          }
-        },
-      );
-    });
-  }
-
-  // Helper method to navigate to project details screen
-  Future<void> _navigateToProjectDetails(BuildContext context, String projectId) async {
+  Future<void> _loadUserProjects() async {
     try {
-      // Fetch project details
-      final response = await http.get(
-        Uri.parse('http://127.0.0.1:5000/project/$projectId'),
-      );
-
-      if (response.statusCode == 200) {
-        final projectData = json.decode(response.body);
-        
-        // Navigate to project details screen
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => ProjectDetailScreen(
-              projectName: projectData['name'] ?? 'Unnamed Project',
-              deadline: DateTime.parse(projectData['deadline']),
-              members: projectData['members'] ?? 0,
-              completedTasks: projectData['completed_tasks'] ?? 0,
-              totalTasks: projectData['total_tasks'] ?? 0,
-              color: _getColorFromName(projectData['name'] ?? ''),
-              description: projectData['description'] ?? 'No description',
-              joinCode: projectData['join_code'] ?? '',
-              projectId: projectId,
-            ),
-          ),
-        ).then((_) {
-          // Refresh data when returning from project details
-          _loadData();
-        });
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to load project details'),
-            backgroundColor: Colors.red,
-          ),
-        );
+      setState(() {
+        isLoadingProjects = true;
+        projectsErrorMessage = null;
+      });
+      
+      // Get the current user from Provider
+      final Usser currentUser = Provider.of<Usser>(context, listen: false);
+      
+      // Make sure we have the latest user ID
+      await currentUser.getID();
+      
+      if (currentUser.usserID.isEmpty) {
+        throw Exception('User ID not available. Please log in again.');
       }
+      
+      print('Fetching projects for user ID: ${currentUser.usserID}');
+      final projects = await ProjectService.getUserProjects(int.parse(currentUser.usserID));
+      print('Received ${projects.length} projects');
+      
+      setState(() {
+        userProjects = projects;
+        isLoadingProjects = false;
+      });
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-  }
-
-  // Show task collaboration details
-  void _showCollaboratorDetails(BuildContext context, GroupItem group) {
-    // Extract project and task info
-    final taskTitle = group.taskTitle ?? 'Task';
-    final projectName = group.projectName ?? 'Unknown Project';
-    
-    // Format members list
-    final List<Widget> memberWidgets = [];
-    if (group.members != null && group.members!.isNotEmpty) {
-      group.members!.forEach((name, role) {
-        memberWidgets.add(
-          ListTile(
-            leading: CircleAvatar(
-              backgroundColor: _getColorFromName(name),
-              child: Text(
-                name.isNotEmpty ? name[0].toUpperCase() : '?',
-                style: const TextStyle(color: Colors.white),
-              ),
-            ),
-            title: Text(name),
-            subtitle: Text('Role: $role'),
-          ),
-        );
+      print('Error loading projects: $e');
+      setState(() {
+        projectsErrorMessage = 'Failed to load projects: $e';
+        isLoadingProjects = false;
       });
     }
-
-    // Show bottom sheet with group details
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(
-          top: Radius.circular(20),
-        ),
-      ),
-      builder: (context) {
-        return Container(
-          padding: const EdgeInsets.all(20),
-          // Use a higher value for more content (up to 0.9)
-          height: MediaQuery.of(context).size.height * 0.6,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: Text(
-                      group.name,
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.close),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                ],
-              ),
-              const Divider(),
-              if (projectName.isNotEmpty)
-                ListTile(
-                  leading: const Icon(Icons.folder_outlined),
-                  title: const Text('Project'),
-                  subtitle: Text(projectName),
-                  onTap: group.projectId != null && group.projectId!.isNotEmpty 
-                      ? () {
-                          Navigator.pop(context);
-                          _navigateToProjectDetails(context, group.projectId!);
-                        }
-                      : null,
-                ),
-              if (taskTitle.isNotEmpty)
-                ListTile(
-                  leading: const Icon(Icons.task_outlined),
-                  title: const Text('Task'),
-                  subtitle: Text(taskTitle),
-                ),
-              const SizedBox(height: 8),
-              const Text(
-                'Collaborators',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Expanded(
-                child: memberWidgets.isEmpty
-                    ? const Center(child: Text('No collaborators found'))
-                    : ListView(
-                        children: memberWidgets,
-                      ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
   }
-
-  // Helper method to get color based on project name
-  Color _getColorFromName(String name) {
-    // This is a simple hash-based color assignment
-    final colors = [
-      Colors.blue,
-      Colors.purple,
-      Colors.green,
-      Colors.orange,
-      Colors.red,
-      Colors.teal,
-      Colors.indigo,
-      Colors.brown,
-    ];
-    
-    int hash = 0;
-    for (int i = 0; i < name.length; i++) {
-      hash = ((hash << 5) - hash) + name.codeUnitAt(i);
-      hash = hash & hash;
+  
+  Future<void> _loadUserDeadlines() async {
+    try {
+      setState(() {
+        isLoadingDeadlines = true;
+        deadlinesErrorMessage = null;
+      });
+      
+      // Get the current user from Provider
+      final Usser currentUser = Provider.of<Usser>(context, listen: false);
+      
+      // Make sure we have the latest user ID
+      await currentUser.getID();
+      
+      if (currentUser.usserID.isEmpty) {
+        throw Exception('User ID not available. Please log in again.');
+      }
+      
+      print('Fetching deadlines for user ID: ${currentUser.usserID}');
+      final deadlines = await ProjectService.getUserDeadlines(int.parse(currentUser.usserID));
+      print('Received ${deadlines.length} deadlines');
+      
+      setState(() {
+        userDeadlines = deadlines;
+        isLoadingDeadlines = false;
+      });
+    } catch (e) {
+      print('Error loading deadlines: $e');
+      setState(() {
+        deadlinesErrorMessage = 'Failed to load deadlines: $e';
+        isLoadingDeadlines = false;
+      });
     }
-    
-    return colors[hash.abs() % colors.length];
+  }
+  
+  Future<void> _loadUserGroupTasks() async {
+    try {
+      setState(() {
+        isLoadingGroupTasks = true;
+        groupTasksErrorMessage = null;
+      });
+      
+      // Get the current user from Provider
+      final Usser currentUser = Provider.of<Usser>(context, listen: false);
+      
+      // Make sure we have the latest user ID
+      await currentUser.getID();
+      
+      if (currentUser.usserID.isEmpty) {
+        throw Exception('User ID not available. Please log in again.');
+      }
+      
+      print('Fetching group tasks for user ID: ${currentUser.usserID}');
+      final tasks = await TaskService.getGroupTasksByUser(int.parse(currentUser.usserID));
+      print('Received ${tasks.length} group tasks');
+      
+      setState(() {
+        userGroupTasks = tasks;
+        isLoadingGroupTasks = false;
+      });
+    } catch (e) {
+      print('Error loading group tasks: $e');
+      setState(() {
+        groupTasksErrorMessage = 'Failed to load group tasks: $e';
+        isLoadingGroupTasks = false;
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return RefreshIndicator(
-      onRefresh: () async {
-        _loadData();
-      },
-      child: SingleChildScrollView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        child: Padding(
+    return Scaffold(
+      backgroundColor: const Color(0xFF1A1D21),
+      body: RefreshIndicator(
+        onRefresh: () async {
+          await Future.wait([
+            _loadUserProjects(),
+            _loadUserDeadlines(),
+            _loadUserGroupTasks(),
+          ]);
+        },
+        child: SingleChildScrollView(
           padding: const EdgeInsets.all(16.0),
+          physics: const AlwaysScrollableScrollPhysics(),
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Top row - three equal cards for main navigation [projects/groups/activity]
+              // Top row with 3 sections - with increased height
               SizedBox(
-                height: MediaQuery.of(context).size.height * 0.22,
+                height: 220, // Trying to force height
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // Projects card [shows active projects with progress]
+                    // Projects Section
                     Expanded(
-                      child: HomeCardContainer(
-                        title: "Projects",
-                        actionButton: null, // Removed add button
-                        content: FutureBuilder<Widget>(
-                          future: _projectsContent,
-                          builder: (context, snapshot) {
-                            if (snapshot.connectionState == ConnectionState.waiting) {
-                              return const Center(child: CircularProgressIndicator());
-                            } else if (snapshot.hasError) {
-                              return Center(child: Text('Error loading projects'));
-                            } else {
-                              return snapshot.data ?? const Center(child: Text('No projects'));
-                            }
-                          },
-                        ),
+                      child: SectionCard(
+                        title: 'Projects',
+                        content: isLoadingProjects
+                            ? const Center(child: CircularProgressIndicator())
+                            : projectsErrorMessage != null
+                                ? Center(
+                                    child: Text(
+                                      projectsErrorMessage!,
+                                      style: const TextStyle(color: Colors.red),
+                                    ),
+                                  )
+                                : ItemList(
+                                    items: userProjects,
+                                    itemBuilder: (context, project) {
+                                      return ItemCard(
+                                        title: project.projName,
+                                        date: project.deadline,
+                                        leadingIcon: const Icon(
+                                          Icons.folder_outlined,
+                                          color: Colors.blue,
+                                        ),
+                                        onTap: () {
+                                          // Navigate to project details
+                                          ProjectNavigationService.navigateToProjectDetails(
+                                            context,
+                                            project.projectUid,
+                                          );
+                                        },
+                                      );
+                                    },
+                                    emptyMessage: 'No projects',
+                                    emptyIcon: Icons.folder_outlined,
+                                  ),
                       ),
                     ),
                     const SizedBox(width: 16),
                     
-                    // Groups card [shows teams user belongs to]
+                    // Groups Section - shows tasks with multiple members
                     Expanded(
-                      child: HomeCardContainer(
-                        title: "Task Collaborators",
-                        actionButton: null, // No add button for collaboration groups
-                        content: FutureBuilder<Widget>(
-                          future: _groupsContent,
-                          builder: (context, snapshot) {
-                            if (snapshot.connectionState == ConnectionState.waiting) {
-                              return const Center(child: CircularProgressIndicator());
-                            } else if (snapshot.hasError) {
-                              return Center(child: Text('Groups not available'));
-                            } else {
-                              return snapshot.data ?? const Center(child: Text('No collaboration groups'));
-                            }
-                          },
-                        ),
+                      child: SectionCard(
+                        title: 'Groups',
+                        content: isLoadingGroupTasks
+                            ? const Center(child: CircularProgressIndicator())
+                            : groupTasksErrorMessage != null
+                                ? Center(
+                                    child: Text(
+                                      groupTasksErrorMessage!,
+                                      style: const TextStyle(color: Colors.red),
+                                    ),
+                                  )
+                                : ItemList(
+                                    // Display all group tasks from the dedicated endpoint
+                                    items: userGroupTasks,
+                                    itemBuilder: (context, task) {
+                                      final taskItem = task as Task;
+                                      // Get member count
+                                      final int memberCount = taskItem.assignedMembers.length;
+                                      return ItemCard(
+                                        title: taskItem.taskName,
+                                        subtitle: '$memberCount members - Priority: ${taskItem.priority}',
+                                        leadingIcon: Icon(
+                                          Icons.group,
+                                          color: taskItem.status == 'complete' 
+                                            ? Colors.green 
+                                            : taskItem.status == 'in_progress' 
+                                                ? Colors.orange 
+                                                : Colors.blue,
+                                        ),
+                                        onTap: () {
+                                          // Navigate to project details
+                                          ProjectNavigationService.navigateToProjectDetails(
+                                            context,
+                                            taskItem.projectUid,
+                                          );
+                                          
+                                          // Show task details in snackbar
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            SnackBar(
+                                              content: Text('Group Task: ${taskItem.taskName} - $memberCount members'),
+                                              duration: const Duration(seconds: 2),
+                                            ),
+                                          );
+                                        },
+                                      );
+                                    },
+                                    emptyMessage: 'No group tasks found',
+                                    emptyIcon: Icons.group_outlined,
+                                  ),
                       ),
                     ),
                     const SizedBox(width: 16),
                     
-                    // Activity feed [shows chronological team activity]
+                    // Recent Activity Section
                     Expanded(
-                      child: HomeCardContainer(
-                        title: "Recent Activity",
-                        content: FutureBuilder<Widget>(
-                          future: _activityContent,
-                          builder: (context, snapshot) {
-                            if (snapshot.connectionState == ConnectionState.waiting) {
-                              return const Center(child: CircularProgressIndicator());
-                            } else if (snapshot.hasError) {
-                              return Center(child: Text('Activity not available'));
-                            } else {
-                              return snapshot.data ?? const Center(child: Text('No activity'));
-                            }
-                          },
-                        ),
+                      child: SectionCard(
+                        title: 'Recent Activity',
                       ),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(height: 16),
-              
-              // Middle row - personal task kanban [largest section for task management]
-              SizedBox(
-                height: MediaQuery.of(context).size.height * 0.35,
-                child: Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          "My Tasks",
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        Expanded(
-                          child: FutureBuilder<Widget>(
-                            future: _kanbanContent,
-                            builder: (context, snapshot) {
-                              if (snapshot.connectionState == ConnectionState.waiting) {
-                                return const Center(child: CircularProgressIndicator());
-                              } else if (snapshot.hasError) {
-                                return Center(child: Text('Error loading tasks'));
-                              } else {
-                                return snapshot.data ?? const Center(child: Text('No tasks'));
-                              }
-                            },
-                          ),
-                        ),
-                      ],
-                    ),
+              const SizedBox(height: 24),
+
+              // Task Board Section - Kanban Board
+              SectionCard(
+                title: 'Task Board',
+                height: 400, // Increased height for better visualization
+                content: Consumer<Usser>(  // Use Consumer to get current user
+                  builder: (context, currentUser, child) {
+                    final userId = currentUser.usserID.isNotEmpty 
+                      ? int.tryParse(currentUser.usserID) 
+                      : null;
+                      
+                    if (userId == null) {
+                      return const Center(
+                        child: Text('Please log in to view your tasks'),
+                      );
+                    }
+                    
+                    return KanbanBoardScreen(
+                      userId: userId,
+                      onTaskTap: (task) {
+                        // Navigate to the project details
+                        ProjectNavigationService.navigateToProjectDetails(
+                          context,
+                          task.projectUid,
+                        );
+                      },
+                    );
+                  },
+                ),
+                actionButton: OutlinedButton.icon(
+                  onPressed: () {},
+                  icon: const Icon(Icons.add_task, size: 16),
+                  label: const Text('Add Task'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.white70,
+                    side: const BorderSide(color: Colors.white24),
                   ),
                 ),
               ),
-              const SizedBox(height: 16),
-              
-              // Bottom row - deadline timeline [shows upcoming due dates]
-              SizedBox(
-                height: MediaQuery.of(context).size.height * 0.22,
-                child: Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text(
-                              "Upcoming Deadlines",
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                              ),
+              const SizedBox(height: 24),
+
+              // Upcoming Deadlines Section
+              SectionCard(
+                title: 'Upcoming Deadlines',
+                height: 200,
+                content: isLoadingDeadlines
+                    ? const Center(child: CircularProgressIndicator())
+                    : deadlinesErrorMessage != null
+                        ? Center(
+                            child: Text(
+                              deadlinesErrorMessage!,
+                              style: const TextStyle(color: Colors.red),
                             ),
-                            // View Calendar button removed
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-                        Expanded(
-                          child: FutureBuilder<Widget>(
-                            future: _deadlinesContent,
-                            builder: (context, snapshot) {
-                              if (snapshot.connectionState == ConnectionState.waiting) {
-                                return const Center(child: CircularProgressIndicator());
-                              } else if (snapshot.hasError) {
-                                return Center(child: Text('Error loading deadlines'));
-                              } else {
-                                return snapshot.data ?? const Center(child: Text('No deadlines'));
-                              }
-                            },
+                          )
+                        : HorizontalItemList(
+                            items: userDeadlines,
+                            itemBuilder: HorizontalItemBuilders.deadlineBuilder(),
+                            emptyMessage: 'No upcoming deadlines',
+                            emptyIcon: Icons.event_busy,
+                            itemWidth: 280,
+                            itemHeight: 120,
                           ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
               ),
             ],
           ),

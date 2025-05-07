@@ -5,7 +5,6 @@ import 'package:postgres/postgres.dart';
 import 'package:sevenc_iteration_two/usser/usserObject.dart';
 import './login/login.dart';
 import './join/join.dart';
-import './features/home/home_feature.dart';
 import './features/navigation/main_navigation.dart';
 import './features/navigation/navigation_service.dart';
 import 'providers/theme_provider.dart';

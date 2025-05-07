@@ -44,11 +44,17 @@ class ThemeProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  // Update custom theme colors
+  // Update custom theme colors with more properties
   void setCustomTheme({required Color surfaceColor, required Color onSurfaceColor}) {
     _surfaceColor = surfaceColor;
     _onSurfaceColor = onSurfaceColor;
-    setTheme(ThemeType.custom); // Switch to custom theme
+    
+    // Adjust the ColorScheme based on surface brightness
+    final bool isDark = ThemeData.estimateBrightnessForColor(surfaceColor) == Brightness.dark;
+    
+    // Store the theme type
+    _themeType = ThemeType.custom;
+    
     notifyListeners();
   }
 

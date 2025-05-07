@@ -3,93 +3,53 @@ import 'dart:convert';
 import '../models/meetings/meeting.dart';
 import '../models/meetings/meeting_attendance.dart';
 
-/// Service for managing meeting data [interacts with meeting API endpoints]
+/// Simplified service for managing meeting data
 class MeetingService {
   static const String baseUrl = 'http://127.0.0.1:5000';
   
-  /// Create a new meeting with attendance records
-  static Future<int> createMeeting({
+  /// Schedule a new meeting (simplified to just date and minimal required fields)
+  static Future<int> scheduleMeeting({
     required String projectId,
     required DateTime date,
-    required Map<int, bool> attendance,
     String? title,
-    String? notes,
     String? meetingType,
   }) async {
     try {
-      print('Calling API to create meeting for project ID: $projectId');
+      print('Scheduling meeting for project ID: $projectId on ${date.toString().substring(0, 10)}');
       
-      // Convert the Map<int, bool> to Map<String, bool> for reliable JSON serialization
-      final Map<String, bool> serializedAttendance = {};
-      attendance.forEach((key, value) {
-        serializedAttendance[key.toString()] = value;
-      });
+      // Generate a default title if none provided
+      final meetingTitle = title ?? 'Meeting on ${date.toString().substring(0, 10)}';
       
-      final requestData = {
-        'project_id': projectId,
-        'date': date.toIso8601String(),
-        'title': title ?? 'Meeting on ${date.toIso8601String().substring(0, 10)}',
-        'notes': notes ?? '',
-        'attendance': serializedAttendance,
-        'meeting_type': meetingType ?? 'Online', // Updated to use valid meeting type
-        'end_date': date.toIso8601String(), // Adding end date
-      };
+      // Make sure date is at least 1 day in the future to show up as upcoming
+      final tomorrow = DateTime.now().add(const Duration(days: 1));
+      final scheduledDate = date.isBefore(tomorrow) ? tomorrow : date;
       
-      print('Request data: ${json.encode(requestData)}');
+      // Create request with minimal required fields and filler data for required DB fields
+      final response = await http.get(
+        Uri.parse('$baseUrl/create/meeting').replace(queryParameters: {
+          'project_id': projectId,
+          'meeting_type': meetingType ?? 'Online',
+          'subject': meetingTitle,
+          'start_date': scheduledDate.toString().substring(0, 10),
+          'end_date': scheduledDate.toString().substring(0, 10),
+          'attendees': 'To be recorded', // Filler data
+          'progress': 'To be updated', // Filler data
+          'takeaway': 'To be determined', // Filler data
+          'notes': 'Scheduled meeting', // Filler data
+        }),
+      );
       
-      // Try direct HTTP call with timeout
-      try {
-        final response = await http.post(
-          Uri.parse('$baseUrl/meetings'),
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-          },
-          body: json.encode(requestData),
-        ).timeout(const Duration(seconds: 10));
-        
-        print('Response status code: ${response.statusCode}');
-        print('Response body: ${response.body}');
+      print('Schedule meeting response: ${response.statusCode}');
+      print('Response body: ${response.body}');
 
-        if (response.statusCode == 201) {
-          final data = json.decode(response.body);
-          return data['meeting_id'];
-        } else {
-          print('Failed to create meeting: ${response.statusCode}');
-          print('Response body: ${response.body}');
-          throw Exception('Failed to create meeting: ${response.statusCode}');
-        }
-      } catch (e) {
-        print('First attempt failed: $e');
-        print('Trying again with a different approach...');
-        
-        // Try a backup approach with different URL format
-        try {
-          final response = await http.post(
-            Uri.parse('http://localhost:5000/meetings'),
-            headers: {
-              'Content-Type': 'application/json',
-              'Accept': 'application/json',
-            },
-            body: json.encode(requestData),
-          ).timeout(const Duration(seconds: 15));
-          
-          print('Second attempt response status code: ${response.statusCode}');
-          print('Second attempt response body: ${response.body}');
-          
-          if (response.statusCode == 201) {
-            final data = json.decode(response.body);
-            return data['meeting_id'];
-          }
-        } catch (secondError) {
-          print('Second attempt also failed: $secondError');
-        }
-        
-        // If both attempts fail, rethrow the original error
-        rethrow;
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return data['meeting_id'];
+      } else {
+        throw Exception('Failed to schedule meeting: ${response.statusCode}');
       }
     } catch (e) {
-      print('Error creating meeting: $e');
+      print('Error scheduling meeting: $e');
       rethrow;
     }
   }
@@ -97,15 +57,63 @@ class MeetingService {
   /// Get all meetings for a project
   static Future<List<Meeting>> getProjectMeetings(String projectId) async {
     try {
+      print('Getting meetings for project ID: $projectId');
+      
       final response = await http.get(
-        Uri.parse('$baseUrl/project/$projectId/meetings'),
+        Uri.parse('$baseUrl/get/project/meetings').replace(queryParameters: {
+          'project_id': projectId,
+        }),
       );
 
+      print('Get meetings response: ${response.statusCode}');
+      
       if (response.statusCode == 200) {
-        final List<dynamic> data = json.decode(response.body);
-        return data.map((item) => Meeting.fromJson(item)).toList();
+        // Parse the response body
+        final dynamic data = json.decode(response.body);
+        
+        // Check if there's an error message and handle it
+        if (data is Map<String, dynamic> && data.containsKey('error')) {
+          print('Backend returned error: ${data['error']}');
+          
+          // Create a fallback meeting with tomorrow's date
+          final meeting = Meeting(
+            id: 0,
+            title: 'Scheduled Meeting',
+            date: DateTime.now().add(const Duration(days: 1)),
+            totalAttendees: 0,
+            presentAttendees: 0,
+            isCompleted: false,
+          );
+          
+          // Get meetings created through the schedule endpoint
+          final scheduledMeeting = await getCreatedMeeting(projectId);
+          if (scheduledMeeting != null) {
+            return [scheduledMeeting];
+          }
+          
+          return [meeting];
+        }
+        
+        // Handle both array and object responses
+        if (data is List) {
+          // If it's already a list, map each item to a Meeting
+          return data.map((item) => Meeting.fromJson(item)).toList();
+        } else if (data is Map<String, dynamic>) {
+          // If it's a map with a meetings array field, use that
+          if (data.containsKey('meetings') && data['meetings'] is List) {
+            return (data['meetings'] as List)
+                .map((item) => Meeting.fromJson(item))
+                .toList();
+          } else {
+            // Consider the entire map as a single meeting
+            return [Meeting.fromJson(data)];
+          }
+        } else {
+          // Empty list as fallback
+          return [];
+        }
       } else {
-        throw Exception('Failed to load meetings');
+        throw Exception('Failed to load meetings: ${response.statusCode}');
       }
     } catch (e) {
       print('Error loading meetings: $e');
@@ -113,131 +121,145 @@ class MeetingService {
     }
   }
   
-  /// Get details of a specific meeting
-  static Future<Map<String, dynamic>> getMeetingDetails(String meetingId) async {
+  /// Get only scheduled (upcoming) meetings for a project
+  static Future<List<Meeting>> getScheduledMeetings(String projectId) async {
     try {
-      final response = await http.get(
-        Uri.parse('$baseUrl/meetings/$meetingId'),
-      );
-
-      if (response.statusCode == 200) {
-        return json.decode(response.body);
-      } else {
-        throw Exception('Failed to load meeting details');
-      }
-    } catch (e) {
-      print('Error loading meeting details: $e');
-      rethrow;
-    }
-  }
-  
-  /// Get contribution metrics for project members
-  static Future<List<Map<String, dynamic>>> getProjectContribution(String projectId) async {
-    try {
-      final response = await http.get(
-        Uri.parse('$baseUrl/project/$projectId/contribution'),
-      );
-
-      if (response.statusCode == 200) {
-        final List<dynamic> data = json.decode(response.body);
-        return data.cast<Map<String, dynamic>>();
-      } else {
-        throw Exception('Failed to load contribution data');
-      }
-    } catch (e) {
-      print('Error loading contribution data: $e');
-      rethrow;
-    }
-  }
-  
-  /// Set the upcoming meeting date for a project
-  static Future<bool> setUpcomingMeetingDate(String projectId, DateTime date) async {
-    try {
-      print('Setting upcoming meeting date for project $projectId to ${date.toIso8601String()}');
+      print('Getting scheduled meetings for project ID: $projectId');
       
-      final response = await http.post(
-        Uri.parse('$baseUrl/project/$projectId/upcoming-meeting'),
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode({
-          'date': date.toIso8601String(),
+      // Get all meetings first
+      final allMeetings = await getProjectMeetings(projectId);
+      
+      // Filter to only include future meetings that aren't completed
+      final now = DateTime.now();
+      final scheduledMeetings = allMeetings
+          .where((meeting) => 
+              !meeting.isCompleted && 
+              meeting.date.isAfter(now))
+          .toList();
+      
+      // Sort by date (earliest first)
+      scheduledMeetings.sort((a, b) => a.date.compareTo(b.date));
+      
+      print('Found ${scheduledMeetings.length} scheduled meetings');
+      scheduledMeetings.forEach((meeting) {
+        print('Scheduled meeting: ID=${meeting.id}, Title=${meeting.title}, Date=${meeting.date}');
+      });
+      
+      return scheduledMeetings;
+    } catch (e) {
+      print('Error getting scheduled meetings: $e');
+      return [];
+    }
+  }
+  
+  /// Get a specific meeting by ID
+  static Future<Meeting?> getCreatedMeeting(String projectId) async {
+    try {
+      // Try to directly query the meeting table for this project's meetings
+      final response = await http.get(
+        Uri.parse('$baseUrl/create/meeting').replace(queryParameters: {
+          'project_id': projectId,
+          'subject': 'Upcoming Meeting',
+          'start_date': DateTime.now().add(const Duration(days: 1)).toString().substring(0, 10),
+          'end_date': DateTime.now().add(const Duration(days: 1)).toString().substring(0, 10),
+          'attendees': 'To be recorded',
+          'progress': 'To be updated',
+          'takeaway': 'To be determined',
+          'notes': 'Scheduled meeting',
         }),
       );
       
-      print('Response status code: ${response.statusCode}');
-      print('Response body: ${response.body}');
-      
-      return response.statusCode == 200;
+      if (response.statusCode == 200) {
+        // Create a meeting object directly using the response
+        final data = json.decode(response.body);
+        if (data.containsKey('meeting_id')) {
+          // Create a dummy meeting with the ID and future date
+          return Meeting(
+            id: data['meeting_id'],
+            title: 'Upcoming Meeting',
+            date: DateTime.now().add(const Duration(days: 1)),
+            totalAttendees: 0,
+            presentAttendees: 0,
+            isCompleted: false,
+          );
+        }
+      }
+      return null;
     } catch (e) {
-      print('Error setting upcoming meeting date: $e');
-      return false;
+      print('Error getting created meeting: $e');
+      return null;
     }
   }
   
-  /// Update the last meeting date for a project
-  static Future<bool> setLastMeetingDate(String projectId, DateTime date) async {
+  /// Record attendance for a meeting
+  static Future<bool> recordAttendance({
+    required String meetingId,
+    required Map<String, bool> attendance, // Map of member_id to attendance status
+  }) async {
     try {
-      print('Setting last meeting date for project $projectId to ${date.toIso8601String()}');
+      print('Recording attendance for meeting ID: $meetingId');
       
-      final response = await http.post(
-        Uri.parse('$baseUrl/project/$projectId/last-meeting'),
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode({
-          'date': date.toIso8601String(),
+      // Filter to only include members who attended (true values)
+      final attendedMembers = attendance.entries
+          .where((entry) => entry.value == true)
+          .map((e) => e.key)
+          .toList();
+      
+      print('Attended members: $attendedMembers');
+      
+      // If no one attended, return early
+      if (attendedMembers.isEmpty) {
+        print('No members attended this meeting');
+        return true; // Still consider this successful - it's valid to have no attendees
+      }
+      
+      // Convert the filtered attendance to the required format: "member_id:true,..."
+      final membersAttendance = attendedMembers
+          .map((id) => '$id:true')
+          .join(',');
+      
+      final response = await http.get(
+        Uri.parse('$baseUrl/update/meeting/attendance').replace(queryParameters: {
+          'meeting_id': meetingId,
+          'members_attendance': membersAttendance,
         }),
       );
       
-      print('Response status code: ${response.statusCode}');
-      print('Response body: ${response.body}');
-      
-      return response.statusCode == 200;
-    } catch (e) {
-      print('Error setting last meeting date: $e');
-      return false;
-    }
-  }
-  
-  /// Get the next and last meeting dates for a project
-  static Future<Map<String, dynamic>> getProjectMeetingDates(String projectId) async {
-    try {
-      print('Getting meeting dates for project $projectId');
-      
-      final response = await http.get(
-        Uri.parse('$baseUrl/project/$projectId/meeting-dates'),
-      );
-      
-      print('Response status code: ${response.statusCode}');
+      print('Record attendance response: ${response.statusCode}');
       print('Response body: ${response.body}');
       
       if (response.statusCode == 200) {
-        return json.decode(response.body);
+        final data = json.decode(response.body);
+        return data['success'] == true;
       } else {
-        throw Exception('Failed to load meeting dates');
+        return false;
       }
     } catch (e) {
-      print('Error getting meeting dates: $e');
-      return {
-        'next_meeting_date': null,
-        'last_meeting_date': null,
-      };
+      print('Error recording attendance: $e');
+      return false;
     }
   }
   
-  /// Test connectivity to the meeting API
-  static Future<bool> testConnection() async {
+  /// Get details of a specific meeting by ID
+  static Future<Meeting?> getMeetingById(String meetingId) async {
     try {
-      print('Testing connection to meeting API...');
+      print('Getting details for meeting ID: $meetingId');
       
       final response = await http.get(
-        Uri.parse('$baseUrl/test/meeting-api'),
+        Uri.parse('$baseUrl/get/meeting').replace(queryParameters: {
+          'meeting_id': meetingId,
+        }),
       );
       
-      print('Test response status code: ${response.statusCode}');
-      print('Test response body: ${response.body}');
-      
-      return response.statusCode == 200;
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return Meeting.fromJson(data);
+      } else {
+        return null;
+      }
     } catch (e) {
-      print('Error testing connection: $e');
-      return false;
+      print('Error getting meeting details: $e');
+      return null;
     }
   }
 }

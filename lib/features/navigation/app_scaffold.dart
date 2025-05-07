@@ -22,8 +22,9 @@ class AppScaffold extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    
     return Scaffold(
-      backgroundColor: Colors.grey[850],
       appBar: AppBar(
         title: Text(title),
         automaticallyImplyLeading: showBackButton,

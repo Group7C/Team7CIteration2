@@ -1,9 +1,45 @@
 import 'package:flutter/material.dart';
 
-/// Class for tracking who attended meetings [attendance record model]
+/// Simple class to represent a meeting attendee
+class MeetingAttendee {
+  final int membersId;
+  final int? userId;
+  final String? username;
+  final bool attended;
+  
+  /// Constructor for meeting attendee
+  const MeetingAttendee({
+    required this.membersId,
+    this.userId,
+    this.username,
+    required this.attended,
+  });
+  
+  /// Create from JSON object
+  factory MeetingAttendee.fromJson(Map<String, dynamic> json) {
+    return MeetingAttendee(
+      membersId: json['members_id'],
+      userId: json['user_id'],
+      username: json['username'],
+      attended: json['attended'] ?? false,
+    );
+  }
+  
+  /// Convert to JSON for API
+  Map<String, dynamic> toJson() {
+    return {
+      'members_id': membersId,
+      'user_id': userId,
+      'username': username,
+      'attended': attended,
+    };
+  }
+}
+
+/// Class for tracking meeting attendance records
 class MeetingAttendance {
   final DateTime date;
-  final Map<int, bool> attendanceByMemberId;
+  final Map<String, bool> attendanceByMemberId; // Changed to String keys to match API
   final String? notes;
   final String? title;
   
@@ -17,49 +53,48 @@ class MeetingAttendance {
   
   /// Convert to JSON for API [serializes data for backend]
   Map<String, dynamic> toJson() {
-    // Convert the attendance map to a JSON-safe format (String keys)
-    final Map<String, bool> serializedAttendance = {};
-    attendanceByMemberId.forEach((key, value) {
-      serializedAttendance[key.toString()] = value;
-    });
-    
     return {
-      'date': date.toIso8601String(),
-      'attendance': serializedAttendance,
+      'date': date.toString().substring(0, 10), // Format for API: YYYY-MM-DD
+      'members_attendance': attendanceByMemberId.entries
+          .map((e) => '${e.key}:${e.value}')
+          .join(','), // Format for API: "member_id:true,member_id:false,..."
       'notes': notes ?? '',
-      'title': title ?? 'Meeting on ${date.toIso8601String().substring(0, 10)}',
+      'title': title ?? 'Meeting on ${date.toString().substring(0, 10)}',
     };
   }
   
   /// Factory constructor from JSON [creates attendance from API response]
   factory MeetingAttendance.fromJson(Map<String, dynamic> json) {
-    final attendance = <int, bool>{};
+    final attendance = <String, bool>{};
     
-    if (json.containsKey('attendance') && json['attendance'] is List) {
-      final attendanceList = json['attendance'] as List;
-      for (final attendee in attendanceList) {
-        if (attendee is Map && attendee.containsKey('user_id') && attendee.containsKey('attended')) {
-          attendance[attendee['user_id']] = attendee['attended'];
+    // Handle attendance records from the API
+    if (json['attendees'] != null && json['attendees'] is List) {
+      final attendeesList = json['attendees'] as List;
+      for (final attendee in attendeesList) {
+        if (attendee is Map && attendee.containsKey('members_id') && attendee.containsKey('attended')) {
+          attendance[attendee['members_id'].toString()] = attendee['attended'] == true;
         }
       }
     }
     
+    // Parse the date
+    DateTime meetingDate;
+    if (json['date'] != null) {
+      meetingDate = DateTime.parse(json['date']);
+    } else if (json['start_date'] != null) {
+      meetingDate = DateTime.parse(json['start_date']);
+    } else if (json['meeting_date'] != null) {
+      meetingDate = DateTime.parse(json['meeting_date']);
+    } else {
+      meetingDate = DateTime.now();
+    }
+    
     return MeetingAttendance(
-      date: DateTime.parse(json['date']),
+      date: meetingDate,
       attendanceByMemberId: attendance,
       notes: json['notes'],
-      title: json['title'],
+      title: json['subject'] ?? json['meeting_title'] ?? json['title'],
     );
-  }
-  
-  /// Finds the most recent meeting [returns null if no meetings exist]
-  static DateTime? getLastMeetingDate(List<MeetingAttendance> meetings) {
-    if (meetings.isEmpty) return null;
-    
-    // Sort newest first and grab the top one [most recent date first]
-    final sortedMeetings = List<MeetingAttendance>.from(meetings)
-      ..sort((a, b) => b.date.compareTo(a.date));
-    return sortedMeetings.first.date;
   }
   
   /// Calculates attendance percentage [between 0.0 and 1.0]
@@ -78,36 +113,5 @@ class MeetingAttendance {
   /// Gets the total number of members [size of attendance map]
   int getTotalMemberCount() {
     return attendanceByMemberId.length;
-  }
-  
-  /// Gets a list of member IDs who attended [present member IDs]
-  List<int> getPresentMemberIds() {
-    return attendanceByMemberId.entries
-        .where((entry) => entry.value)
-        .map((entry) => entry.key)
-        .toList();
-  }
-  
-  /// Gets a list of member IDs who didn't attend [absent member IDs]
-  List<int> getAbsentMemberIds() {
-    return attendanceByMemberId.entries
-        .where((entry) => !entry.value)
-        .map((entry) => entry.key)
-        .toList();
-  }
-  
-  /// Makes a clone with optional changes [immutable pattern]
-  MeetingAttendance copyWith({
-    DateTime? date,
-    Map<int, bool>? attendanceByMemberId,
-    String? notes,
-    String? title,
-  }) {
-    return MeetingAttendance(
-      date: date ?? this.date,
-      attendanceByMemberId: attendanceByMemberId ?? Map.from(this.attendanceByMemberId),
-      notes: notes ?? this.notes,
-      title: title ?? this.title,
-    );
   }
 }
