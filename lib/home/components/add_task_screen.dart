@@ -145,6 +145,28 @@ void initState() {
     }
   }
 
+  String? validateTaskTitle(String? value, List<String> existingTitles) {
+  if (value == null || value.trim().isEmpty) {
+    return "Title cannot be empty";
+  } else if (value.length > 50) {
+    return "Title cannot exceed 50 characters";
+  } else if (existingTitles.contains(value.trim())) {
+    return "Choose a different name.";
+  }
+  return null;
+}
+
+String? validateDescription(String? value) {
+  if (value == null || value.trim().isEmpty) {
+    return "Description cannot be empty";
+  } else if (value.length > 400) {
+    return "Description cannot exceed 400 characters";
+  }
+  return null;
+}
+
+
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -174,7 +196,7 @@ void initState() {
                       ),
                     ),
                     style: TextStyle(color: theme.colorScheme.onSurface),
-                    validator: (value) {
+                    /*validator: (value) {
                       if (value == null || value.trim().isEmpty) {
                         return "Title cannot be empty";
                       } else if (value.length > 50) {
@@ -182,7 +204,7 @@ void initState() {
                       } else if (projectTasks.contains(value)) {
                         return "Choose a different name.";}
                       return null;
-                    },
+                    },*/validator: (value) => validateTaskTitle(value, projectTasks),
                     onFieldSubmitted: (_) {
                       FocusScope.of(context).requestFocus(descriptionFocusNode);
                     },
@@ -202,9 +224,9 @@ void initState() {
                       ),
                     ),
                     style: TextStyle(color: theme.colorScheme.onSurface),
-                    validator: (value) => value == null || value.trim().isEmpty
+                    validator: /*(value) => value == null || value.trim().isEmpty
                         ? "Description cannot be empty"
-                        : null,
+                        : null,*/validateDescription,
                     onFieldSubmitted: (_) {
                       FocusScope.of(context).requestFocus(priorityFocusNode);
                     },

@@ -148,15 +148,27 @@ class Task with ChangeNotifier {
     notifyListeners();
   }
 
-  void updateDescription(String newDescription) {
+  void updateDescription(String? newDescription) {
+    if (newDescription == null) {
+    throw ArgumentError("Description cannot be null.");
+    }
     if (newDescription.length > 400) {
-      throw Exception("Character limit reached!!!");
+      throw Exception("Description exceed character limit (400).");
     }
     description = newDescription;
     notifyListeners();
   }
 
-  void updateTitle(String newTitle) {
+  void updateTitle(String? newTitle) {
+    if (newTitle == null) {
+    throw ArgumentError("Title cannot be null.");
+    }
+    if (newTitle.trim().isEmpty) {
+      throw ArgumentError("Title cannot be empty or whitespace.");
+    }
+    if (newTitle.length > 50) {
+      throw ArgumentError("Title cannot exceed 50 characters.");
+    }
     title = newTitle;
     notifyListeners();
   }

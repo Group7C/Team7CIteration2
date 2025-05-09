@@ -35,7 +35,7 @@ class MyApp extends StatelessWidget {
 
     return MaterialApp(
       theme: themeProvider.currentTheme, // Set theme based on provider
-      initialRoute: "/login",
+      initialRoute: "/home",
       routes: {
         "/home": (context) => const Home(),
         "/navigation": (context) => const NavigationPage(),
