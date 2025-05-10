@@ -1,0 +1,26 @@
+name: Tests for the Login Page
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  login_tests:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Install Flutter SDK
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.27.3
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Run login page tests
+        run: flutter test test/login_tests/

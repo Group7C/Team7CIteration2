@@ -1,0 +1,33 @@
+{
+  "user": {
+    "username": "testuser123456",
+    "email": "testuser123456@gmail.com",
+    "password": "P@ssword1234",
+    "theme": "Light",
+    "profile_picture": null,
+    "currency_total": 0,
+    "customize_settings": {},
+    "projects": [
+      {
+        "name": "Sample Project",
+        "id": "proj123",
+        "tasks": [
+          {
+            "title": "Sample Task 1",
+            "status": "todo",
+            "priority": 3,
+            "deadline": "2025-06-01",
+            "description": "This is a sample task for offline mode"
+          },
+          {
+            "title": "Sample Task 2",
+            "status": "inProgress",
+            "priority": 2,
+            "deadline": "2025-06-15",
+            "description": "Another sample task for offline mode"
+          }
+        ]
+      }
+    ]
+  }
+}

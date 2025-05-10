@@ -1,0 +1,26 @@
+name: Tests for Add Project Screen
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  project_add_tests:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Install Flutter SDK
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.27.3
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Run add project tests
+        run: flutter test test/project_add_edit_tests/

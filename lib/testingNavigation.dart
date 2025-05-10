@@ -1,5 +1,5 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+
 
 class NavigationPage extends StatelessWidget {
   const NavigationPage({super.key});
@@ -12,10 +12,9 @@ class NavigationPage extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            NavigationButton(route: '/login', label: 'Go to Login'),
-            NavigationButton(route: '/join', label: 'Go to Join Project'),
-            // Note: '/userProfile/profile' route isn't defined in main.dart
-            // If you want to keep this button, add route in main.dart 
+            NavigationButton(route: '/login/login', label: 'Go to Login'),
+            NavigationButton(route: '/join/join', label: 'Go to Join Project'),
+            NavigationButton(route: '/userProfile/profile', label: 'Go to User Profile'),
           ],
         ),
       ),

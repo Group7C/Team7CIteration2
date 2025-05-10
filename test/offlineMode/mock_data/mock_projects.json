@@ -1,0 +1,20 @@
+{
+  "projects": [
+    {
+      "projectName": "Mobile App Dev",
+      "joinCode": "MOB123",
+      "deadline": "2025-06-15T00:00:00.000",
+      "uuid": "123e4567-e89b-12d3-a456-426614174000",
+      "notificationFrequency": "weekly",
+      "members": ["Alice", "Bob"]
+    },
+    {
+      "projectName": "Website Redesign",
+      "joinCode": "WEB456",
+      "deadline": "2025-05-30T00:00:00.000",
+      "uuid": "223e4567-e89b-12d3-a456-426614174001",
+      "notificationFrequency": "daily",
+      "members": ["Charlie", "Dave"]
+    }
+  ]
+}

@@ -1,4 +1,9 @@
 import 'package:flutter/material.dart';
+import '../usser/usserObject.dart';
+import 'project.dart';
+import 'package:provider/provider.dart';
+import './input_field_containers.dart';
+import 'validation.dart';
 
 class JoinProject extends StatefulWidget {
   const JoinProject({super.key});
@@ -15,6 +20,7 @@ class _JoinProjectState extends State<JoinProject> {
   // creating controllers so you can retrieve the text value from the input fields
   final idController = TextEditingController();
   final passwordController = TextEditingController();
+  DateTime? selectedDueDate;
 
   // this variable dictates the state of the screen. When equal to true, it will
   // allow the user to join a group. When equal to false, it will allow the user
@@ -24,24 +30,9 @@ class _JoinProjectState extends State<JoinProject> {
   // this is going to be the DateTime value that the user sets inside of the calendar
   final dueDate = DateTime.now();
 
-  // creating a function that returns a Input Box
-  TextFormField createInputField(TextEditingController controller, String hintMessage, int maxInputLength, Function validatorFunction) {
-    return TextFormField(
-      controller: controller,
-      decoration: InputDecoration(
-          hintText: hintMessage,
-      ),
-      maxLength: maxInputLength,
-      validator: (value) {
-         return validatorFunction(value);
-        },
-      style: const TextStyle(color: Colors.white70),
-    );
-  }
 
   Container dueDateContainer() {
     DateTime currentTime = DateTime.now();
-    DateTime finalDateInCalendar = DateTime(currentTime.year + 5, currentTime.month, currentTime.day);
 
     return Container(
         child: Column(
@@ -65,32 +56,90 @@ class _JoinProjectState extends State<JoinProject> {
           initialDate: currentTime,
           firstDate: currentTime,
           lastDate: finalDateInCalendar,
-          onDateChanged: (selectedDate) {}
+          onDateChanged: (selectedDate) {
+            selectedDueDate = selectedDate;
+          }
       ),
     );
   }
 
-  // validator function for the group id input field to make sure it meets requirements
-  String? idInputValidator(String value) {
-    if (value.isEmpty) {
-      return "Can not leave this field empty";
-    }
-    return null;
-  }
-
-  // validator function for the password input field to make sure it meets requriements
-  String? passwordInputValidator(String value) {
-    if (value.isEmpty) {
-      return "Can not leave this field empty";
-    }
-    return null;
-  }
-
   // this function will be called when the user taps the submit button
-  void submitAction() {
+  void submitAction() async {
+
+    setState(() {
+      uidErrorText = null;
+      joinCodeErrorText = null;
+    });
 
     // validate the form key. Will trigger the validator in the input field's TextFormField
     if (_formKey.currentState!.validate()) {
+      // if form validates successfully, this block will execute
+
+      // if you are trying to create a project
+      if (!joinMode && selectedDueDate != null) {
+          // if the selected due date on the calendar is not chosen, then the
+          // user will NOT be able to create a group
+
+          context.read<Project>().name = idController.text;
+          context.read<Project>().joinCode = passwordController.text;
+          // dont need below anymore since we changed schema
+          //context.read<Project>().members.add(context.read<Usser>());
+          context.read<Project>().dueDate = selectedDueDate;
+
+          /*
+          Project project = Project(idController.text, passwordController.text, [],
+              selectedDueDate);
+           */
+
+          await context.read<Project>().generateUuid();
+
+          print(context.read<Project>().name);
+          print(context.read<Project>().joinCode);
+          // print(context.read<Project>().members);
+          print(context.read<Project>().dueDate);
+          print(context.read<Project>().projectUuid);
+
+          String userId = context.read<Usser>().usserID;
+
+          print("USER ID WHEN CREATING PROJECT IS: $userId");
+
+          await context.read<Project>().uploadProjectDatabase(userId);
+
+          // now the user can be redirected to the home page of their new project
+          Navigator.pushNamed(context, "/home");
+
+      }
+      else if (joinMode) {
+        // trying to join a group
+
+        // have to check if the project uuid matches the join code
+
+        context.read<Project>().projectUuid = idController.text;
+        context.read<Project>().joinCode = passwordController.text;
+
+        String userId = context.read<Usser>().usserID;
+
+        List<String?> errorMessages = await context.read<Project>().joinProject(uidErrorText, joinCodeErrorText, userId);
+
+        uidErrorText = errorMessages[0];
+        joinCodeErrorText = errorMessages[1];
+
+        print("UidErrorText: $uidErrorText. JoinCodeErrorText: $joinCodeErrorText");
+
+        // in case there is an error
+        setState(() {});
+
+        print("UidErrorText: $uidErrorText. JoinCodeErrorText: $joinCodeErrorText");
+
+        if (joinCodeErrorText == null && uidErrorText == null) {
+          Navigator.pushNamed(context, "/home");
+        }
+
+        /*
+        Project project = Project(idController.text, passwordController.text, []);
+         */
+
+      }
 
     }
     print(idController.text);
@@ -130,12 +179,12 @@ class _JoinProjectState extends State<JoinProject> {
                     const SizedBox(height: 10),
                     Text((joinMode)?"Join Group": "Create Group", style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.blue[800]),),
                     const SizedBox(height: 100),
-                    Align(alignment: Alignment.centerLeft,child: Text("Group Name", style: TextStyle(fontSize: 24, fontWeight: FontWeight.w600, color: Colors.grey[300])),),
+                    Align(alignment: Alignment.centerLeft,child: Text((joinMode)?"Group ID": "Group Name", style: TextStyle(fontSize: 24, fontWeight: FontWeight.w600, color: Colors.grey[300])),),
                     // change the max input length to match specification in user requirements
-                    createInputField(idController, "Enter Group ID", 10, idInputValidator),
+                    createInputField(idController, (joinMode)?"Enter Group ID": "Enter Project Name", 50, idInputValidator, uidErrorText),
                     const SizedBox(height: 100),
                     Align(alignment: Alignment.centerLeft, child: Text("Group Password", style: TextStyle(fontSize: 24, fontWeight: FontWeight.w600, color: Colors.grey[300]))),
-                    createInputField(passwordController, "Enter Group Password", 10, passwordInputValidator),
+                    createInputField(passwordController, "Enter Group Password", 10, passwordInputValidator, joinCodeErrorText),
                     // const SizedBox(height: 100),
                     (joinMode)?  const SizedBox(height: 100): dueDateContainer(),
                     ElevatedButton(

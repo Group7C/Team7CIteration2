@@ -1,0 +1,38 @@
+{
+  "tasks": [
+    {
+      "title": "Create Landing Page",
+      "description": "Design landing page with hero section",
+      "status": "pending",
+      "priority": 2,
+      "percentageWeighting": 25.0,
+      "listOfTags": ["design", "frontend"],
+      "startDate": "2025-05-01T00:00:00.000",
+      "endDate": "2025-05-15T00:00:00.000",
+      "parentProject": "Website Redesign",
+      "members": {
+        "Charlie": "editor",
+        "Dave": "viewer"
+      },
+      "notificationPreference": true,
+      "notificationFrequency": "daily"
+    },
+    {
+      "title": "Add User Auth",
+      "description": "Implement login system for mobile app",
+      "status": "inProgress", 
+      "priority": 1,
+      "percentageWeighting": 35.0,
+      "listOfTags": ["backend", "security"],
+      "startDate": "2025-05-05T00:00:00.000",
+      "endDate": "2025-05-20T00:00:00.000",
+      "parentProject": "Mobile App Dev",
+      "members": {
+        "Alice": "owner",
+        "Bob": "editor"
+      },
+      "notificationPreference": true,
+      "notificationFrequency": "weekly"
+    }
+  ]
+}
