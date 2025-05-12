@@ -70,26 +70,25 @@ class Task with ChangeNotifier {
     }
   }
 
-  void setTask() {
-    title = '';    
-    percentageWeighting = 0.0;
-    listOfTags = [];
-    priority = 1;
-    startDate = DateTime.now();
-    endDate = DateTime.now().add(Duration(hours: 1));
-    description = '';
-    members = {};
-    notificationPreference = true;
-    notificationFrequency = NotificationFrequency.daily;
-    notifyListeners(); 
+  
+ void assignMember(String username, Role role, List<String> projectMembers) {
+  if (username.trim().isEmpty) {
+    throw ArgumentError('Username must not be empty.');
   }
 
- void assignMember(String username, String role) {
-    members[username] = role;
-    notifyListeners();
+  if (!projectMembers.any((m) => m.toLowerCase() == username.toLowerCase())) {
+    throw ArgumentError('Username "$username" is not a valid project member.');
   }
+
+  members[username] = role.name;
+  notifyListeners();
+}
+
 
   void removeMember(String username) {
+    if (username.trim().isEmpty) {
+      throw ArgumentError('Username must not be empty.');
+    }
     members.remove(username);
     notifyListeners();
   }
@@ -98,10 +97,23 @@ class Task with ChangeNotifier {
     return members.keys.toList();
   }
 
-  void removeTag(String tag) {
-    listOfTags.remove(tag);
-    notifyListeners();
+  void removeTag(String? tagToDelete) {
+  // Check if the tag to remove is null or empty
+  if (tagToDelete == null || tagToDelete.trim().isEmpty) {    
+    return;
   }
+  //case-insensitive check
+  int index = listOfTags.indexWhere(
+    (tag) => tag.toLowerCase() == tagToDelete.toLowerCase(),
+  );
+  if (index == -1) {    
+    return;
+  }
+  listOfTags.removeAt(index);
+  notifyListeners();
+  
+}
+
 
   List<String>? getTags() {
     return listOfTags;
@@ -116,21 +128,38 @@ class Task with ChangeNotifier {
     notifyListeners();
   }
 
-  void addOrUpdateTag(String oldTag, String newTag) {
-    if (newTag.isEmpty) {
-      print("New tag cannot be empty.");
+  void addOrUpdateTag(String? oldTag, String? newTag) {
+
+  newTag = newTag?.trim();
+  //New tag cannot be null or empty.
+  if (newTag == null || newTag.trim().isEmpty) {   
+    return;
+  }
+  //Not more than 20 characters.
+  if (newTag.length > 20) {
+    return;
+  }
+  //Check tag list.
+  if (listOfTags.any((tag) => tag.toLowerCase() == newTag!.toLowerCase())) {
       return;
-    }
+  }
+  if (oldTag != null) {
     int index = listOfTags.indexOf(oldTag);
     if (index != -1) {
       listOfTags[index] = newTag;
-    } else {
-      listOfTags.add(newTag);
+      notifyListeners();
+      return;
     }
-    notifyListeners();
   }
+  listOfTags.add(newTag);
+  notifyListeners();
+}
+
 
   void updatePriority(int newPriority) {
+    if (newPriority < 1 || newPriority > 5) {
+    throw ArgumentError('Priority must be between 1 and 5. Received: $newPriority');
+  }
     priority = newPriority;
     notifyListeners();
   }
@@ -145,6 +174,14 @@ class Task with ChangeNotifier {
       throw Exception("End date must be after start date");
     }
     endDate = newEndDate;
+    notifyListeners();
+  }
+
+  void updateStartDate(DateTime newStartDate) {
+    if (newStartDate.isAfter(endDate)) {
+      throw Exception("Start date must be before end date");
+    }
+    startDate = newStartDate;
     notifyListeners();
   }
 
@@ -175,6 +212,7 @@ class Task with ChangeNotifier {
 
   void updateNotificationPreference(bool newPreference) {
     notificationPreference = newPreference;
+    notificationFrequency = NotificationFrequency.none;
     notifyListeners();
   }
 

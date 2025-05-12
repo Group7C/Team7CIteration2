@@ -16,7 +16,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
   //To create a task retrieve and change variables of project's name, project's tasks' name list, 
   //project's capacity(remaining percentage), notification preference(enabled/daily)
   // Task functionality variables from original home.dart
-  int projectCapacity = 78;
+  double projectCapacity = 78;
   List<Task> tasks = [];
   List<String> projectTasks = ["Task1", "Task 2"];
   String projectName = "MyProject";
@@ -106,31 +106,48 @@ void initState() {
   }
 
   void submitTask() {
-    
-    if (formKey!.currentState!.validate()) {
-      Task newTask = Task(
-        title: titleController.text,
-        parentProject: taskParentNotifier.value,
-        status: Status.todo,
-        percentageWeighting:
-        double.tryParse(percentageWeightingController.text) ?? 0.0,
-        listOfTags: tags,
-        priority: int.tryParse(priorityController.text) ?? 1,
-        startDate: DateTime.now(),
-        endDate: DateTime.parse(endDateController.text),
-        description: descriptionController.text,
-        members: Map.from(taskMember),
-        notificationPreference: notificationPreference,
-        notificationFrequency: notificationFrequencyNotifier.value,
-        directoryPath: "path/to/directory",
-      );
+  if (formKey!.currentState!.validate()) {   
+    final hasEditor = taskMember.entries.any(
+      (entry) => entry.value == "Editor" && projectMembers.contains(entry.key),
+    );
 
-      Provider.of<TaskProvider>(context, listen: false).addTask(newTask);
-      clearForm();
+    if (!hasEditor) {
       ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text("Task '${newTask.title}' created successfully!")));
+        SnackBar(
+          content: const Text("At least one valid editor is required."),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
+      return;
     }
+
+    Task newTask = Task(
+      title: titleController.text,
+      parentProject: taskParentNotifier.value,
+      status: Status.todo,
+      percentageWeighting:
+          double.tryParse(percentageWeightingController.text) ?? 0.0,
+      listOfTags: tags,
+      priority: int.tryParse(priorityController.text) ?? 1,
+      startDate: DateTime.now(),
+      endDate: DateTime.parse(endDateController.text),
+      description: descriptionController.text,
+      members: Map.from(taskMember),
+      notificationPreference: notificationPreference,
+      notificationFrequency: notificationFrequencyNotifier.value,
+      directoryPath: "path/to/directory",
+    );
+
+    projectCapacity -= newTask.percentageWeighting.toDouble();
+    Provider.of<TaskProvider>(context, listen: false).addTask(newTask);
+    clearForm();
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("Task '${newTask.title}' created successfully!")),
+    );
   }
+}
+
 
   String _formatFrequency(NotificationFrequency frequency) {
     switch (frequency) {
@@ -165,6 +182,38 @@ String? validateDescription(String? value) {
   return null;
 }
 
+String? validatePercentage(String? value) {
+  if (value == null || value.trim().isEmpty) {
+                      return "Percentage cannot be empty";
+                    }
+                    final percentage = int.tryParse(value);
+                    if (percentage == null ||
+                        percentage < 1 ||
+                        percentage > 100) {
+                      return "Enter a value between 1 and 100";}
+                    if(percentage > projectCapacity){
+                      return "Task weight must be less than $projectCapacity .";
+                    
+                    }
+                    return null;
+    }
+bool validateTag(String? value) {
+  if (value == null || value.trim().isEmpty) {
+     ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Tag cannot be empty")));
+    return false; 
+  } else if (tags.contains(value.trim())) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Tag already exists")));
+    return false;
+  }
+  else if (value.length > 20) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Tag cannot exceed 20 characters")));
+    return false; //"Tag cannot exceed 20 characters";
+  }
+  return true;
+}
 
 
   @override
@@ -196,15 +245,7 @@ String? validateDescription(String? value) {
                       ),
                     ),
                     style: TextStyle(color: theme.colorScheme.onSurface),
-                    /*validator: (value) {
-                      if (value == null || value.trim().isEmpty) {
-                        return "Title cannot be empty";
-                      } else if (value.length > 50) {
-                        return "Title cannot exceed 50 characters";
-                      } else if (projectTasks.contains(value)) {
-                        return "Choose a different name.";}
-                      return null;
-                    },*/validator: (value) => validateTaskTitle(value, projectTasks),
+                    validator: (value) => validateTaskTitle(value, projectTasks),
                     onFieldSubmitted: (_) {
                       FocusScope.of(context).requestFocus(descriptionFocusNode);
                     },
@@ -224,9 +265,7 @@ String? validateDescription(String? value) {
                       ),
                     ),
                     style: TextStyle(color: theme.colorScheme.onSurface),
-                    validator: /*(value) => value == null || value.trim().isEmpty
-                        ? "Description cannot be empty"
-                        : null,*/validateDescription,
+                    validator: validateDescription,
                     onFieldSubmitted: (_) {
                       FocusScope.of(context).requestFocus(priorityFocusNode);
                     },
@@ -347,22 +386,7 @@ String? validateDescription(String? value) {
                       ),
                     ),
                     style: TextStyle(color: theme.colorScheme.onSurface),
-                    validator: (value) {
-                      if (value == null || value.trim().isEmpty) {
-                        return "Percentage cannot be empty";
-                      }
-                      final percentage = int.tryParse(value);
-                      if (percentage == null ||
-                          percentage < 1 ||
-                          percentage > 100) {
-                        return "Enter a value between 1 and 100";}
-                      if(percentage > projectCapacity){
-                        return "Task weight must be less than $projectCapacity .";
-                      
-                      }
-                      projectCapacity -= percentage;
-                      return null;
-                    },
+                    validator: validatePercentage,
                     onFieldSubmitted: (_) {
                       FocusScope.of(context).requestFocus(tagFocusNode);
                     },
@@ -390,7 +414,7 @@ String? validateDescription(String? value) {
                       IconButton(
                         icon: Icon(Icons.add, color: theme.colorScheme.primary),
                         onPressed: () {
-                          if (tagController.text.trim().isNotEmpty) {
+                          if (validateTag(tagController.text)) {//(tagController.text.trim().isNotEmpty) {
                             setState(() {
                               tags.add(tagController.text.trim());
                             });
@@ -470,7 +494,7 @@ String? validateDescription(String? value) {
                           
                           _selectedUsername = username;
                           _selectedRole = Role.editor;
-                          setState(() {}); 
+                          setState(() {});                           
                         },
                       ),
                     ],
@@ -514,8 +538,7 @@ String? validateDescription(String? value) {
                       const SizedBox(width: 16),
                       ElevatedButton(
                         onPressed: () {
-                          submitTask();
-                          //Update the project remaining capacity all over
+                          submitTask();                          
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: theme.colorScheme.secondary,
