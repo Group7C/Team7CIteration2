@@ -26,10 +26,10 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<Map<String, dynamic>> _loadMockUserData() async {
     try {
       // Load the JSON file from assets
-      final String jsonString = await rootBundle.loadString('lib/offline_mode/mock_data/user.json');
+      final String jsonString = await rootBundle.loadString('lib/offline_mode/mock_data/users.json');
       // Parse the JSON string
       final Map<String, dynamic> jsonData = json.decode(jsonString);
-      return jsonData['user'];
+      return jsonData['user1'];
     } catch (e) {
       print('Error loading mock user data: $e');
       return {};
@@ -38,28 +38,26 @@ class _LoginScreenState extends State<LoginScreen> {
 
   // Function to handle offline login
   void _handleOfflineLogin() async {
+    final ctx = context;
+
     try {
       final userData = await _loadMockUserData();
       if (userData.isNotEmpty) {
-        // Set the user data in the provider
-        context.read<Usser>().usserName = userData['username'];
-        context.read<Usser>().email = userData['email'];
-        context.read<Usser>().usserPassword = userData['password'];
-        
-        // Load mock data
-        bool success = await OfflineModeHandler.loadMockData(context);
-        
-        // Navigate to home screen
-        Navigator.pushNamed(context, "/home");
-        
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Loaded mock data for testing"))
+        ctx.read<Usser>().usserName = userData['username'];
+        ctx.read<Usser>().email = userData['email'];
+        ctx.read<Usser>().usserPassword = userData['password'];
+
+        bool success = await OfflineModeHandler.loadMockData(ctx);
+        Navigator.pushNamed(ctx, "/home");
+
+        ScaffoldMessenger.of(ctx).showSnackBar(
+            const SnackBar(content: Text("Loaded mock data for testing"))
         );
       }
     } catch (e) {
       print('Error loading mock data: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Failed to load mock data"))
+      ScaffoldMessenger.of(ctx).showSnackBar(
+          const SnackBar(content: Text("Failed to load mock data"))
       );
     }
   }

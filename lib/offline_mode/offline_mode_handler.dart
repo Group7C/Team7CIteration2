@@ -6,6 +6,8 @@ import '../providers/projects_provider.dart';
 import '../providers/tasks_provider.dart';
 import '../Objects/task.dart';
 import '../projects/project_model.dart';
+import '../providers/user_provider.dart';
+import '../usser/usserObject.dart';
 
 // Handles loading of mock data for testing
 class OfflineModeHandler {
@@ -59,6 +61,8 @@ class OfflineModeHandler {
         default:
           taskStatus = Status.todo;
       }
+
+
       
       // Set notification frequency
       NotificationFrequency notificationFreq;
@@ -98,17 +102,53 @@ class OfflineModeHandler {
     
     return tasks;
   }
-  
+
+
+  static Future<List<Usser>> loadMockUsers() async {
+    String jsonString = await rootBundle.loadString('lib/offline_mode/mock_data/users.json');
+    Map<String, dynamic> jsonData = json.decode(jsonString);
+
+    List<Usser> users = [];
+
+    jsonData.forEach((key, userJson) {
+      users.add(Usser.fromJson(userJson));
+    });
+
+    return users;
+  }
+
+
   // Load mock data into providers
   static Future<bool> loadMockData(BuildContext context) async {
     // Load and set projects
+
     List<Project> projects = await loadMockProjects();
     Provider.of<ProjectsProvider>(context, listen: false).loadMockProjects(projects);
     
     // Load and set tasks (assuming we've updated TaskProvider similarly)
     List<Task> tasks = await loadMockTasks();
     Provider.of<TaskProvider>(context, listen: false).loadMockTasks(tasks);
+
+    print("loading users");
+
+    List<Usser> users = await loadMockUsers();
+    Usser mockUser = users.last;
+    Provider.of<Usser>(context, listen: false)
+      ..usserName = mockUser.usserName
+      ..email = mockUser.email
+      ..usserPassword = mockUser.usserPassword
+      ..theme = mockUser.theme
+      ..profilePic = mockUser.profilePic
+      ..currancyTotal = mockUser.currancyTotal
+      ..settings = mockUser.settings
+      ..tasks = mockUser.tasks;
     
     return true;
   }
+
+
+
+
+
+
 }
