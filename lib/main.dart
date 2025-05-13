@@ -21,7 +21,7 @@ void main() {
       MultiProvider(
         providers: [
           // creating blank initial providers
-          ChangeNotifierProvider(create: (context) => Usser("","","","Light",null,0,{},)),
+          ChangeNotifierProvider(create: (context) => Usser("", "", "", "Light", null, 0, {})),
           ChangeNotifierProvider(create: (context) => Project("","",null)),
           ChangeNotifierProvider(create: (context) => ThemeProvider()),
           ChangeNotifierProvider(create: (context) => TaskProvider()),

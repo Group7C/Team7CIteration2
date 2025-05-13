@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:sevenc_iteration_two/usser/usserObject.dart';
+import 'package:sevenc_iteration_two/Objects/task.dart';
 
-/*
+
 class UsserProfile extends StatelessWidget {
   final Usser usser;
 
@@ -19,7 +20,7 @@ class UsserProfile extends StatelessWidget {
               profilePhoto(imageUrl: usser.profilePic!, name: usser.usserName),
 
               // Use FutureBuilder for async task retrieval
-              FutureBuilder<List<task>>(
+              FutureBuilder<List<Task>>(
                 future: usser.getTasksAsync(),
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
@@ -96,7 +97,7 @@ class profilePhoto extends StatelessWidget {
   }
 }
 
-Widget taskList(List<task> tasks) {
+Widget taskList(List<Task> tasks) {
   return Container(
     height: 300, // Adjust height as needed
     padding: EdgeInsets.all(10),
@@ -109,7 +110,7 @@ Widget taskList(List<task> tasks) {
         itemCount: tasks.length,
         itemBuilder: (context, index) {
           return ListTile(
-            title: Text(tasks[index].name!),
+            title: Text(tasks[index].title!),
           );
         },
       ),
@@ -117,7 +118,7 @@ Widget taskList(List<task> tasks) {
   );
 }
 
- */
+
 
 
 
