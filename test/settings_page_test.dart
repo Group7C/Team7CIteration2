@@ -8,121 +8,158 @@ import 'package:sevenc_iteration_two/usser/usserObject.dart';
 
 class MockUsser extends ChangeNotifier implements Usser {
   @override
-  String get usserName => "TestUser";
+  String get usserName => _usserName;
+  String _usserName = "TestUser";
 
   @override
-  String get email => "test@example.com";
+  String get email => _email;
+  String _email = "test@example.com";
 
   @override
-  int get currancyTotal => 100;
+  int get currancyTotal => _currancyTotal;
+  int _currancyTotal = 100;
 
   @override
-  String? get profilePic => null;
+  String? get profilePic => _profilePic;
+  String? _profilePic;
 
   @override
-  late Map<String, dynamic> settings;
-
-  @override
-  late List tasks;
-
-  @override
-  late String theme;
-
-  @override
-  late Map<int, String> usserData;
-
-  @override
-  late String usserID;
-
-  @override
-  late String usserPassword;
-
-  @override
-  Future<void> changeTheme() {
-    // TODO: implement changeTheme
-    throw UnimplementedError();
+  set usserName(String value) {
+    _usserName = value;
+    notifyListeners();
   }
 
   @override
-  Future<bool?> checkUsserExists() {
-    // TODO: implement checkUsserExists
-    throw UnimplementedError();
+  set email(String value) {
+    _email = value;
+    notifyListeners();
   }
 
   @override
-  set currancyTotal(int _currancyTotal) {
-    // TODO: implement currancyTotal
+  set currancyTotal(int value) {
+    _currancyTotal = value;
+    notifyListeners();
   }
 
   @override
-  set email(String _email) {
-    // TODO: implement email
+  set profilePic(String? value) {
+    _profilePic = value;
+    notifyListeners();
   }
 
   @override
-  Future<String> getID() {
-    // TODO: implement getID
-    throw UnimplementedError();
+  late Map<String, dynamic> settings = {};
+
+  @override
+  late List<dynamic> tasks = [];
+
+  @override
+  late String theme = "light";
+
+  @override
+  late Map<int, String> usserData = {};
+
+  @override
+  late String usserID = "mock-id";
+
+  @override
+  late String usserPassword = "mock-password";
+
+  MockUsser() {
+    loadMockTasks(); // load tasks during construction
+  }
+
+  void loadMockTasks() {
+    List<dynamic> jsonData = [
+      {
+        'title': 'Mock Task',
+        'description': 'This is a mock task for testing.',
+        'status': 'inProgress',
+        'priority': 1,
+        'percentageWeighting': 50,
+        'listOfTags': ['urgent', 'work'],
+        'startDate': '2024-01-01T00:00:00.000',
+        'endDate': '2024-01-07T00:00:00.000',
+        'parentProject': 'mock_project',
+        'members': {'mockUser': 'owner'},
+        'notificationPreference': true,
+        'notificationFrequency': 'daily',
+      }
+    ];
+
+    List<Task> parsedTasks = [];
+    for (var item in jsonData) {
+      Status taskStatus;
+      switch (item['status']) {
+        case 'inProgress':
+          taskStatus = Status.inProgress;
+          break;
+        case 'completed':
+          taskStatus = Status.completed;
+          break;
+        default:
+          taskStatus = Status.todo;
+      }
+
+      NotificationFrequency notificationFreq;
+      switch (item['notificationFrequency']) {
+        case 'weekly':
+          notificationFreq = NotificationFrequency.weekly;
+          break;
+        case 'monthly':
+          notificationFreq = NotificationFrequency.monthly;
+          break;
+        case 'none':
+          notificationFreq = NotificationFrequency.none;
+          break;
+        default:
+          notificationFreq = NotificationFrequency.daily;
+      }
+
+      parsedTasks.add(Task(
+        title: item['title'],
+        description: item['description'],
+        status: taskStatus,
+        priority: item['priority'],
+        percentageWeighting: item['percentageWeighting'],
+        listOfTags: List<String>.from(item['listOfTags']),
+        startDate: DateTime.parse(item['startDate']),
+        endDate: DateTime.parse(item['endDate']),
+        parentProject: item['parentProject'],
+        members: Map<String, String>.from(item['members']),
+        notificationPreference: item['notificationPreference'],
+        notificationFrequency: notificationFreq,
+        directoryPath: 'offline/tasks/${item['title']}',
+      ));
+    }
+
+    tasks = parsedTasks;
   }
 
   @override
-  Future<String?> getPassword() {
-    // TODO: implement getPassword
-    throw UnimplementedError();
-  }
+  Future<void> changeTheme() async {}
 
   @override
-  Future<String> getProjects() {
-    // TODO: implement getProjects
-    throw UnimplementedError();
-  }
+  Future<bool?> checkUsserExists() async => true;
 
   @override
-  Future<List<Task>> getTasksAsync() {
-    // TODO: implement getTasksAsync
-    throw UnimplementedError();
-  }
+  Future<String> getID() async => usserID;
 
   @override
-  Future<String?> getTheme() {
-    // TODO: implement getTheme
-    throw UnimplementedError();
-  }
+  Future<String?> getPassword() async => usserPassword;
 
   @override
-  Future<bool?> passwordCorrect() {
-    // TODO: implement passwordCorrect
-    throw UnimplementedError();
-  }
+  Future<String> getProjects() async => "mock-projects";
 
   @override
-  set profilePic(String? _profilePic) {
-    // TODO: implement profilePic
-  }
+  Future<List<Task>> getTasksAsync() async => tasks.cast<Task>();
 
   @override
-  Future<void> updateUsername() {
-    // TODO: implement updateUsername
-    throw UnimplementedError();
-  }
+  Future<String?> getTheme() async => theme;
 
   @override
-  void updateUsser() {
-    // TODO: implement updateUsser
-  }
+  Future<bool?> passwordCorrect() async => true;
 
-  @override
-  Future<void> uploadUsser() {
-    // TODO: implement uploadUsser
-    throw UnimplementedError();
-  }
-
-  @override
-  set usserName(String _usserName) {
-    // TODO: implement usserName
-  }
-
-// Implement other required methods or fields with dummies if needed
 }
 
 void main() {

@@ -147,62 +147,64 @@ class _SettingsPageState extends State<SettingsPage> {
               Center(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      // Username header
-                      Text(usser.usserName, style: Theme.of(context).textTheme.headlineSmall),
-
-                      const SizedBox(height: 16),
-
-                      // User profile photo
-                      ProfilePhotoWidget(
-                        initialImage: usser.profilePic != null
-                            ? parseUint8List(usser.profilePic!)
-                            : placeHolderImage,
-                      ),
-
-                      const SizedBox(height: 16),
-
-                      // Email display
-                      Text(usser.email, style: Theme.of(context).textTheme.bodyLarge),
-
-                      const SizedBox(height: 32),
-
-                      // Button to toggle theme options visibility
-                      ElevatedButton(
-                        onPressed: () {
-                          setState(() {
-                            _showThemeOptions = !_showThemeOptions;
-                          });
-                        },
-                        child: const Text("Themes"),
-                      ),
-
-                      // Display theme options if toggled
-                      if (_showThemeOptions) ...[
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Username header
+                        Text(usser.usserName, style: Theme.of(context).textTheme.headlineSmall),
+                    
                         const SizedBox(height: 16),
-
-                        // Current theme display
-                        ListTile(
-                          title: const Text("Current Theme"),
-                          subtitle: Text(themeProvider.themeType
-                              .toString()
-                              .split('.')
-                              .last
-                              .toUpperCase()),
+                    
+                        // User profile photo
+                        ProfilePhotoWidget(
+                          initialImage: usser.profilePic != null
+                              ? parseUint8List(usser.profilePic!)
+                              : placeHolderImage,
                         ),
-
-                        // Theme selection radios
-                        _themeRadio(ThemeType.light, "Light Theme", themeProvider),
-                        _themeRadio(ThemeType.dark, "Dark Theme", themeProvider),
-                        _themeRadio(ThemeType.custom, "Custom Theme", themeProvider),
-
-                        // Show color pickers if custom theme selected
-                        if (themeProvider.themeType == ThemeType.custom)
-                          ..._customColorPickers(themeProvider),
+                    
+                        const SizedBox(height: 16),
+                    
+                        // Email display
+                        Text(usser.email, style: Theme.of(context).textTheme.bodyLarge),
+                    
+                        const SizedBox(height: 32),
+                    
+                        // Button to toggle theme options visibility
+                        ElevatedButton(
+                          onPressed: () {
+                            setState(() {
+                              _showThemeOptions = !_showThemeOptions;
+                            });
+                          },
+                          child: const Text("Themes"),
+                        ),
+                    
+                        // Display theme options if toggled
+                        if (_showThemeOptions) ...[
+                          const SizedBox(height: 16),
+                    
+                          // Current theme display
+                          ListTile(
+                            title: const Text("Current Theme"),
+                            subtitle: Text(themeProvider.themeType
+                                .toString()
+                                .split('.')
+                                .last
+                                .toUpperCase()),
+                          ),
+                    
+                          // Theme selection radios
+                          _themeRadio(ThemeType.light, "Light Theme", themeProvider),
+                          _themeRadio(ThemeType.dark, "Dark Theme", themeProvider),
+                          _themeRadio(ThemeType.custom, "Custom Theme", themeProvider),
+                    
+                          // Show color pickers if custom theme selected
+                          if (themeProvider.themeType == ThemeType.custom)
+                            ..._customColorPickers(themeProvider),
+                        ],
                       ],
-                    ],
+                    ),
                   ),
                 ),
               ),
