@@ -5,9 +5,12 @@ import '../providers/projects_provider.dart';
 import 'project_model.dart';
 import '../shared/components/date_picker_field.dart';
 import 'validation/edit_project_validation.dart';
+import '../services/project_services.dart';
+import '../usser/usserObject.dart';
 
-// BASED ON VOULAS ADD TASK SCREEN - NOT CLAIMING TO BE ORIGINAL
-
+// screen for modifying or deleting existing projects
+// allows editing project details and managing members
+// [inspired by Voula's add task screen implementation - basically just a recreation of that for editing projects]
 class EditProjectScreen extends StatefulWidget {
   const EditProjectScreen({Key? key}) : super(key: key);
 
@@ -16,28 +19,31 @@ class EditProjectScreen extends StatefulWidget {
 }
 
 class _EditProjectScreenState extends State<EditProjectScreen> {
-  // Controllers
+  // text input controllers [for form fields]
   final TextEditingController projectNameController = TextEditingController();
   final TextEditingController joinCodeController = TextEditingController();
   final TextEditingController deadlineController = TextEditingController();
   final TextEditingController googleDriveLinkController = TextEditingController();
   final TextEditingController discordLinkController = TextEditingController();
   
-  // Focus Nodes
+  // focus nodes for form navigation
   final FocusNode projectNameFocusNode = FocusNode();
   final FocusNode joinCodeFocusNode = FocusNode();
   final FocusNode deadlineFocusNode = FocusNode();
   final FocusNode googleDriveLinkFocusNode = FocusNode();
   final FocusNode discordLinkFocusNode = FocusNode();
   
-  // Form key for validation
+  // form validation key
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   
-  // Project Selection
+  // tracks selected project
   int? selectedProjectIndex;
   Project? selectedProject;
   
-  // Notification frequency
+  // local copy of project members for display and management
+  Map<String, String> projectMembers = {};
+  
+  // notification settings with value notifier [for dropdown]
   final ValueNotifier<NotificationFrequency> notificationFrequencyNotifier = 
       ValueNotifier<NotificationFrequency>(NotificationFrequency.weekly);
   
@@ -47,6 +53,7 @@ class _EditProjectScreenState extends State<EditProjectScreen> {
     _loadProjects();
   }
   
+  // loads projects and selects first one by default
   void _loadProjects() {
     final projects = Provider.of<ProjectsProvider>(context, listen: false).projects;
     if (projects.isNotEmpty && selectedProjectIndex == null) {
@@ -54,6 +61,7 @@ class _EditProjectScreenState extends State<EditProjectScreen> {
     }
   }
   
+  // loads project data into form fields when selected
   void _selectProject(int index) {
     final projects = Provider.of<ProjectsProvider>(context, listen: false).projects;
     if (index >= 0 && index < projects.length) {
@@ -62,20 +70,35 @@ class _EditProjectScreenState extends State<EditProjectScreen> {
         selectedProjectIndex = index;
         selectedProject = project;
         
-        // Populate form with project data
+        // fill form with existing project data
         projectNameController.text = project.projectName;
         joinCodeController.text = project.joinCode;
-        deadlineController.text = project.deadline.toString().split(' ')[0]; // Just the date part
+        deadlineController.text = project.deadline.toString().split(' ')[0]; // just date part
         googleDriveLinkController.text = project.googleDriveLink ?? '';
         discordLinkController.text = project.discordLink ?? '';
         notificationFrequencyNotifier.value = project.notificationFrequency;
+        
+        // copy members for local management
+        projectMembers = Map.from(project.members);
       });
     }
   }
   
-  void _saveProject() {
+  // saves updated project to server
+  void _saveProject() async {
     if (_formKey.currentState!.validate() && selectedProject != null) {
-      // Update the project with new values
+      // show spinner while updating
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (BuildContext context) {
+          return const Center(
+            child: CircularProgressIndicator(),
+          );
+        },
+      );
+      
+      // update project with form values
       selectedProject!.projectName = projectNameController.text;
       selectedProject!.joinCode = joinCodeController.text;
       selectedProject!.deadline = DateTime.parse(deadlineController.text);
@@ -86,17 +109,108 @@ class _EditProjectScreenState extends State<EditProjectScreen> {
       selectedProject!.discordLink = discordLinkController.text.isEmpty 
           ? null 
           : discordLinkController.text;
+      selectedProject!.members = Map.from(projectMembers); 
       
-      // Notify listeners of changes
-      selectedProject!.notifyListeners();
+      // send to server [uses project service]
+      bool success = await ProjectServices.updateProject(selectedProject!);
       
-      // Show success message
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Project '${selectedProject!.projectName}' updated successfully!"))
-      );
+      // hide spinner
+      Navigator.pop(context);
+      
+      if (success) {
+        // refresh projects after update
+        final projectsProvider = Provider.of<ProjectsProvider>(context, listen: false);
+        final usser = Provider.of<Usser>(context, listen: false);
+        await projectsProvider.fetchProjects(usser.usserID);
+        
+        // update ui
+        selectedProject!.notifyListeners();
+        
+        // show success message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Project '${selectedProject!.projectName}' updated successfully!"))
+        );
+      } else {
+        // show error if failed
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Failed to update project. Please try again."),
+            backgroundColor: Colors.red,
+          )
+        );
+      }
     }
   }
   
+  // handles project deletion with confirmation
+  void _deleteProject() async {
+    if (selectedProject != null) {
+      // confirm before deleting [prevents accidental deletion]
+      bool? confirmDelete = await showDialog<bool>(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: const Text('Delete Project'),
+            content: Text('Are you sure you want to delete "${selectedProject!.projectName}"? This action cannot be undone.'),
+            actions: <Widget>[
+              TextButton(
+                child: const Text('Cancel'),
+                onPressed: () => Navigator.of(context).pop(false),
+              ),
+              TextButton(
+                child: const Text('Delete', style: TextStyle(color: Colors.red)),
+                onPressed: () => Navigator.of(context).pop(true),
+              ),
+            ],
+          );
+        },
+      );
+      
+      if (confirmDelete == true) {
+        // show spinner while deleting
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (BuildContext context) {
+            return const Center(
+              child: CircularProgressIndicator(),
+            );
+          },
+        );
+        
+        // delete from server
+        bool success = await ProjectServices.deleteProject(selectedProject!.uuid, Provider.of<Usser>(context, listen: false).usserID);
+        
+        // hide spinner
+        Navigator.pop(context);
+        
+        if (success) {
+          // refresh projects list after deletion
+          final projectsProvider = Provider.of<ProjectsProvider>(context, listen: false);
+          final usser = Provider.of<Usser>(context, listen: false);
+          await projectsProvider.fetchProjects(usser.usserID);
+          
+          // show success message
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("Project '${selectedProject!.projectName}' deleted successfully!"))
+          );
+          
+          // select first project in list if any remain
+          _selectProject(0);
+        } else {
+          // show error if failed
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("Failed to delete project. Please try again."),
+              backgroundColor: Colors.red,
+            )
+          );
+        }
+      }
+    }
+  }
+  
+  // converts enum to display string for dropdown
   String _formatFrequency(NotificationFrequency frequency) {
     switch (frequency) {
       case NotificationFrequency.daily:
@@ -112,21 +226,21 @@ class _EditProjectScreenState extends State<EditProjectScreen> {
   
   @override
   void dispose() {
-    // Dispose controllers
+    // clean up controllers to prevent memory leaks
     projectNameController.dispose();
     joinCodeController.dispose();
     deadlineController.dispose();
     googleDriveLinkController.dispose();
     discordLinkController.dispose();
     
-    // Dispose focus nodes
+    // clean up focus nodes
     projectNameFocusNode.dispose();
     joinCodeFocusNode.dispose();
     deadlineFocusNode.dispose();
     googleDriveLinkFocusNode.dispose();
     discordLinkFocusNode.dispose();
     
-    // Dispose notifiers
+    // clean up notifiers
     notificationFrequencyNotifier.dispose();
     
     super.dispose();
@@ -137,6 +251,7 @@ class _EditProjectScreenState extends State<EditProjectScreen> {
     final theme = Theme.of(context);
     final projects = Provider.of<ProjectsProvider>(context).projects;
     
+    // handle empty state
     if (projects.isEmpty) {
       return const Center(
         child: Text(
@@ -151,7 +266,7 @@ class _EditProjectScreenState extends State<EditProjectScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Project Selection Dropdown
+          // project selection dropdown [at top]
           Row(
             children: [
               Text("Select Project to Edit:", style: theme.textTheme.titleMedium),
@@ -184,7 +299,7 @@ class _EditProjectScreenState extends State<EditProjectScreen> {
           
           const SizedBox(height: 24),
           
-          // Project Edit Form
+          // main edit form [only shows when project selected]
           Expanded(
             child: selectedProject == null
                 ? const Center(child: Text("Please select a project to edit"))
@@ -193,7 +308,7 @@ class _EditProjectScreenState extends State<EditProjectScreen> {
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Left Column
+                        // left column [basic project details]
                         Expanded(
                           flex: 1,
                           child: Column(
@@ -283,7 +398,7 @@ class _EditProjectScreenState extends State<EditProjectScreen> {
                         
                         const SizedBox(width: 32),
                         
-                        // Right Column
+                        // right column [optional links, members, buttons]
                         Expanded(
                           flex: 1,
                           child: Column(
@@ -325,46 +440,49 @@ class _EditProjectScreenState extends State<EditProjectScreen> {
                                 validator: (value) => null,
                               ),
                               
-                              // Project Members (just display, not editable for simplicity - but might implement removal as feature)
                               const SizedBox(height: 16),
                               Text("Project Members", style: theme.textTheme.titleMedium),
-                              Card(
-                                color: theme.colorScheme.surface,
-                                child: Padding(
-                                  padding: const EdgeInsets.all(12.0),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      for (String member in selectedProject!.members)
-                                        Padding(
-                                          padding: const EdgeInsets.symmetric(vertical: 4.0),
-                                          child: Row(
-                                            children: [
-                                              const Icon(Icons.person, size: 16),
-                                              const SizedBox(width: 8),
-                                              Text(member),
-                                            ],
-                                          ),
-                                        ),
-                                      if (selectedProject!.members.isEmpty)
-                                        Text(
-                                          "No members assigned to this project",
-                                          style: TextStyle(
-                                            color: theme.colorScheme.onSurface.withOpacity(0.6),
-                                            fontStyle: FontStyle.italic,
-                                          ),
-                                        ),
-                                    ],
-                                  ),
-                                ),
+                              const SizedBox(height: 8),
+                              // member chips with delete option [shows role in brackets]
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                children: projectMembers.entries
+                                    .map((entry) => Chip(
+                                          label: Text("${entry.key} (${entry.value})"),
+                                          backgroundColor: theme.colorScheme.primary,
+                                          labelStyle: TextStyle(
+                                              color: theme.colorScheme.onPrimary),
+                                          onDeleted: () {
+                                            setState(() {
+                                              projectMembers.remove(entry.key);
+                                            });
+                                          },
+                                        ))
+                                    .toList(),
                               ),
                               
                               const Spacer(),
                               
-                              // Save Button
+                              // action buttons [delete and save]
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.end,
                                 children: [
+                                  ElevatedButton(
+                                    onPressed: _deleteProject,
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: theme.colorScheme.error,
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 24,
+                                        vertical: 12,
+                                      ),
+                                    ),
+                                    child: Text(
+                                      "Delete Project",
+                                      style: TextStyle(color: theme.colorScheme.onError),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 16),
                                   ElevatedButton(
                                     onPressed: _saveProject,
                                     style: ElevatedButton.styleFrom(

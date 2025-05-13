@@ -5,6 +5,8 @@ import 'package:intl/intl.dart';
 import '../Objects/task.dart';
 import 'task_utils.dart';
 
+// creates expandable list view of all tasks
+// [displays summary with expandable details]
 Widget createTaskBody() {
     return Consumer<TaskProvider>(
       builder: (context, taskProvider, child) {
@@ -15,11 +17,13 @@ Widget createTaskBody() {
             return Card(
               margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
               child: ExpansionTile(
+                // summary row shows key info [title, priority, due date, status]
                 title: Text(task.title,
                     style: const TextStyle(fontWeight: FontWeight.bold)),
                 subtitle: Text(
                     "Priority: ${task.priority} | Due: ${DateFormat('dd-MM-yyyy').format(task.endDate)} | Status: ${task.status.displayName}"),
                 children: [
+                  // expandable details section
                   ListTile(
                     title: const Text("Parent Project"),
                     subtitle: Text(task.parentProject ?? "N/A"),
@@ -28,6 +32,7 @@ Widget createTaskBody() {
                     title: const Text("Percentage Weighting"),
                     subtitle: Text("${task.percentageWeighting}%"),
                   ),
+                  // tags shown as chips when available
                   ListTile(
                     title: const Text("Tags"),
                     subtitle:
@@ -45,6 +50,7 @@ Widget createTaskBody() {
                     subtitle:
                         Text(DateFormat('yyyy-MM-dd').format(task.startDate)),
                   ),
+                  // members list with roles
                   ListTile(
                     title: const Text("Members"),
                     subtitle: Text(
@@ -64,6 +70,7 @@ Widget createTaskBody() {
                     subtitle: Text(
                         task.notificationFrequency.toString().split('.').last),
                   ),
+                  // full description shown in expanded view
                   ListTile(
                     title: const Text("Description"),
                     subtitle: Text(task.description),

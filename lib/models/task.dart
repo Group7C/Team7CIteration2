@@ -14,6 +14,11 @@ class Task {
     required this.status,
   });
 
+  // copyWith creates a new Task with most properties from original task
+  // but lets you selectively update specific fields [immutability pattern]
+  // useful when updating a task without changing all its properties
+  // e.g. task.copyWith(status: "completed") creates new Task with just status changed
+  // so basically it's a shortcut to create a copy with just few changes instead of rewriting everything
   Task copyWith({
     String? id,
     String? title,

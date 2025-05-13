@@ -8,6 +8,7 @@ import 'dart:convert';
 import 'package:flutter/services.dart' show rootBundle;
 import '../providers/connectivity_provider.dart';
 import '../providers/projects_provider.dart';
+import '../providers/tasks_provider.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -60,6 +61,30 @@ class _LoginScreenState extends State<LoginScreen> {
           const SnackBar(content: Text("Failed to load mock data"))
       );
     }
+  }
+
+  // CRUD: LoadUserData
+  Future<void> _loadUserData() async {
+    print("=== Loading User Data ===");
+    // Get the user ID
+    String userId = context.read<Usser>().usserID;
+    print("User ID: $userId");
+    
+    // Load projects first
+    final projectsProvider = context.read<ProjectsProvider>();
+    await projectsProvider.fetchProjects(userId);
+    print("Projects loaded: ${projectsProvider.projects.length}");
+    
+    // Load tasks for all projects
+    final taskProvider = context.read<TaskProvider>();
+    
+    // For each project, load its tasks
+    for (var project in projectsProvider.projects) {
+      print("Loading tasks for project: ${project.projectName}");
+      await taskProvider.fetchTasksForProject(project.uuid);
+    }
+    
+    print("All user data loaded successfully");
   }
 
   @override
@@ -171,26 +196,21 @@ class _LoginScreenState extends State<LoginScreen> {
 
               // need to get the user's username as if they are logging in,
               // they won't be prompted to enter their username
-              context.read<Usser>().updateUsername();
+              await context.read<Usser>().updateUsername();
 
-              // adding check to make sure that the returning user is a part of
-              // a project. If not, they will be redirected to the join screen
+              // CRUD: Load user data after login
+              await _loadUserData();
 
-              String projects = await context.read<Usser>().getProjects();
-
-              print("Projects: $projects");
-              print(".$projects.");
-
-              // projects will be '[]' if it has no projects
-              if (projects == '[]\n') {
-                print("projects equal");
-                Navigator.pushNamed(context, "/join");
+              // Check if user has any projects to determine routing
+              final projectsProvider = context.read<ProjectsProvider>();
+              if (projectsProvider.projects.isEmpty) {
+                print("User has no projects, redirecting to join screen");
+                Navigator.pushNamed(context, "/home"); // Im just abandoning join and putting them to home whilst testing need to change to groups later
               }
               else {
-                print("projects not equal");
+                print("User has projects, redirecting to home screen");
                 Navigator.pushNamed(context, "/home");
               }
-
             }
             else {
               // the password is incorrect so need to update the text form field

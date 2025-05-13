@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'screen/home_screen.dart';
+import '../projects/screen/projects_screen.dart';
 import 'settings_page.dart';
 import '../tasks/add_task_screen.dart';
 import '../tasks/edit_task_screen.dart';
@@ -14,52 +16,41 @@ class Home extends StatefulWidget {
 
 class _HomeState extends State<Home> {
   
-  String screenTitle = "Team 7C"; // User name 
+  String screenTitle = "Team 7C"; 
   
-  // Simplified Home Body
-  Widget createHomeBody() {
-    return const Center(
-      child: Text(
-        "Home",
-        style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
-      ),
-    );
-  }
-
-  // Simplified Projects Body
-  Widget createProjectsBody() {
-    return const Center(
-      child: Text(
-        "Projects",
-        style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 7, // 7 tabs now
+      length: 7, 
       initialIndex: 0,
       child: Scaffold(       
         appBar: AppBar(
           title: Text(screenTitle),
           actions: [
+            // Probably remove this icon later after introducing Jamie's settings page properly
             IconButton(
               icon: const Icon(Icons.settings),
               onPressed: () {
-                // Switch to Settings tab
-                DefaultTabController.of(context).animateTo(6);
+                DefaultTabController.of(context).animateTo(7);
               },
             ),
           ],
           bottom: TabBar(
             isScrollable: true,
-            tabAlignment: TabAlignment.center, 
+            tabAlignment: TabAlignment.center,
+            indicatorSize: TabBarIndicatorSize.label,
+            indicator: UnderlineTabIndicator(
+              borderSide: BorderSide(width: 3.0, color: Theme.of(context).colorScheme.primary),
+              insets: EdgeInsets.symmetric(horizontal: 16.0),
+            ),
+            labelColor: Theme.of(context).colorScheme.primary,
+            unselectedLabelColor: Colors.grey[600],
+            labelStyle: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+            unselectedLabelStyle: TextStyle(fontWeight: FontWeight.normal, fontSize: 14),
             tabs: const <Widget>[
               Tab(text: "Home"),
               Tab(text: "Projects"),
-              Tab(text: "Add Project"),
+              Tab(text: "Add/Join Project"),
               Tab(text: "Edit Project"),
               Tab(text: "Add Task"),
               Tab(text: "Edit Task"),
@@ -68,13 +59,13 @@ class _HomeState extends State<Home> {
           ),
         ),
         body: TabBarView(children: <Widget>[
-          createHomeBody(),
-          createProjectsBody(),
+          const HomeScreen(),
+          const ProjectsScreen(),
           const AddProjectScreen(),
           const EditProjectScreen(),
-          const AddTaskScreen(),
+          const AddTaskScreen(), 
           const EditTaskScreen(),
-          const SettingsPage()
+          const SettingsPage(),
         ]),
       ),
     );

@@ -1,13 +1,19 @@
 import 'package:flutter/material.dart';
 import '../Objects/task.dart';
+import '../Objects/tags_enum.dart';
 import '../providers/tasks_provider.dart';
 import '../shared/components/date_picker_field.dart';
 import 'package:provider/provider.dart';
 import 'validation/add_task_validation.dart';
+import '../providers/projects_provider.dart';
+import '../projects/project_model.dart';
+import '../usser/usserObject.dart';
 
 
 class AddTaskScreen extends StatefulWidget {
-  const AddTaskScreen({Key? key}) : super(key: key);
+  final String? projectUuid;
+  
+  const AddTaskScreen({Key? key, this.projectUuid}) : super(key: key);
 
   @override
   State<AddTaskScreen> createState() => _AddTaskScreenState();
@@ -19,38 +25,36 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
   // Task functionality variables from original home.dart
   int projectCapacity = 78;
   List<Task> tasks = [];
-  List<String> projectTasks = ["Task1", "Task 2"];
-  String projectName = "MyProject";
-  List<String> get possibleTaskParent => [projectName, ...projectTasks]; // dynamically construction when accessing it
-  List<String> projectMembers = ['Alice','Bob','Charlie'];
+  //List<String> projectMembers = ['Alice','Bob','Charlie'];  // Voula's hardcoded - replaced with Luke's database driven members
+  List<String> projectMembers = [];  // Will load from selected project
   Map<String, String> taskMember = {};
-  String username = "Alice";
+  String username = "Alice";  // Default username - no longer automatically added
+  int? selectedProjectUid;
+  List<Project> userProjects = [];
   
 
   final TextEditingController endDateController = TextEditingController();
-  final TextEditingController tagController = TextEditingController();
   final TextEditingController titleController = TextEditingController();
   final TextEditingController descriptionController = TextEditingController();
   final TextEditingController percentageWeightingController = TextEditingController();
   final TextEditingController priorityController = TextEditingController();
   
-  late String _selectedUsername;
+  late String? _selectedUsername;  // Make nullable to handle empty member lists
   Role _selectedRole = Role.editor;
 
   final ValueNotifier<List<Map<String, String>>> _membersListNotifier =
       ValueNotifier([]);
 
   final notificationFrequencyNotifier = ValueNotifier<NotificationFrequency>(NotificationFrequency.daily);
-  late final ValueNotifier<String> taskParentNotifier;
+  late final ValueNotifier<int?> taskProjectNotifier;
   GlobalKey<FormState>? formKey = GlobalKey<FormState>();
-  List<String> tags = [];
-  NotificationFrequency notificationFrequency = NotificationFrequency.daily; //retrieve project's value
-  bool notificationPreference = true; //retrieve project's value
-  // Focus Nodes
+  TagsEnum? selectedTag;  // Single tag since database uses enum
+  NotificationFrequency notificationFrequency = NotificationFrequency.daily; 
+  bool notificationPreference = true; 
+ 
   FocusNode titleFocusNode = FocusNode();
   FocusNode descriptionFocusNode = FocusNode();
   FocusNode endDateFocusNode = FocusNode();
-  FocusNode tagFocusNode = FocusNode();
   FocusNode percentageFocusNode = FocusNode();
   FocusNode priorityFocusNode = FocusNode();
 
@@ -58,9 +62,26 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
 void initState() {
   super.initState();
 
-  _selectedUsername = username;
-  taskMember = {username: _selectedRole.name};
-  taskParentNotifier = ValueNotifier<String>(possibleTaskParent.first);
+  _selectedUsername = null;  // Start with no selection
+  taskMember = {};  // Start with empty members
+  taskProjectNotifier = ValueNotifier<int?>(null);
+  selectedProjectUid = widget.projectUuid != null ? int.tryParse(widget.projectUuid!) : null;
+  
+  // Get user projects
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    userProjects = Provider.of<ProjectsProvider>(context, listen: false).projects;
+    if (userProjects.isNotEmpty && selectedProjectUid == null) {
+      // Select first project by default if none provided
+      Project firstProject = userProjects.first;
+      if (firstProject.projectUid != null) {
+        selectedProjectUid = firstProject.projectUid;
+        taskProjectNotifier.value = selectedProjectUid;
+        // Load initial project members
+        projectMembers = List.from(firstProject.members.keys);
+        _selectedUsername = projectMembers.isNotEmpty ? projectMembers.first : null;
+      }
+    }
+  });
 }
 
 
@@ -68,15 +89,13 @@ void initState() {
   @override
   void dispose() {
     notificationFrequencyNotifier.dispose(); 
-    taskParentNotifier.dispose();
+    taskProjectNotifier.dispose();
     titleFocusNode.dispose();
     descriptionFocusNode.dispose();
-    tagFocusNode.dispose();
     percentageFocusNode.dispose();
     priorityFocusNode.dispose();
     endDateController.dispose();
     endDateFocusNode.dispose();
-    tagController.dispose();
     titleController.dispose();
     descriptionController.dispose();
     percentageWeightingController.dispose();
@@ -90,32 +109,54 @@ void initState() {
       formKey = GlobalKey<FormState>();
       titleController.clear();
       descriptionController.clear();
-      tagController.clear();
       percentageWeightingController.clear();
       priorityController.clear();
       endDateController.clear();
-      tags = [];
-      taskMember.clear();
-      taskParentNotifier.value = possibleTaskParent.first;
+      selectedTag = null;  // Clear selected tag
+      taskMember.clear();  // Keep members empty on clear
+      // Find first project
+      if (userProjects.isNotEmpty) {
+        Project firstProject = userProjects.first;
+        if (firstProject.projectUid != null) {
+          taskProjectNotifier.value = firstProject.projectUid;
+        }
+      }
       notificationPreference = true;
       formKey!.currentState?.reset();
       _membersListNotifier.value = [];
-      _selectedUsername = username;        
+      _selectedUsername = projectMembers.isNotEmpty ? projectMembers.first : null;  // Select first project member if available        
     _selectedRole = Role.editor;  
       FocusScope.of(context).unfocus();
     });
   }
 
-  void submitTask() {
+  void submitTask() async {
     
     if (formKey!.currentState!.validate()) {
+      // Check if a project is selected
+      if (taskProjectNotifier.value == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Please select a project first."),
+            backgroundColor: Colors.orange,
+          )
+        );
+        return;
+      }
+      
+      // Find the selected project
+      Project? selectedProject = userProjects.firstWhere(
+        (project) => project.projectUid == taskProjectNotifier.value,
+        orElse: () => userProjects.first,
+      );
+      
       Task newTask = Task(
         title: titleController.text,
-        parentProject: taskParentNotifier.value,
+        parentProject: selectedProject.projectName,
         status: Status.todo,
         percentageWeighting:
         double.tryParse(percentageWeightingController.text) ?? 0.0,
-        listOfTags: tags,
+        listOfTags: selectedTag != null ? [selectedTag!.databaseValue] : [],
         priority: int.tryParse(priorityController.text) ?? 1,
         startDate: DateTime.now(),
         endDate: DateTime.parse(endDateController.text),
@@ -126,10 +167,45 @@ void initState() {
         directoryPath: "path/to/directory",
       );
 
-      Provider.of<TaskProvider>(context, listen: false).addTask(newTask);
-      clearForm();
-      ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text("Task '${newTask.title}' created successfully!")));
+      // Call createTaskOnline instead of just addTask
+      // Use the projectUid (integer) for the backend API
+      bool success = await Provider.of<TaskProvider>(context, listen: false)
+          .createTaskOnline(newTask, selectedProject.projectUid!);
+      
+      if (selectedProject.projectUid == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Project does not have a valid ID. Please sync with the server."),
+            backgroundColor: Colors.red,
+          )
+        );
+        return;
+      }
+      
+      if (success) {
+        // Refresh all project and task data to keep in sync with backend
+        String userId = Provider.of<Usser>(context, listen: false).usserID;
+        
+        // Refresh projects (which includes member data)
+        await Provider.of<ProjectsProvider>(context, listen: false)
+            .fetchProjects(userId);
+        
+        // Refresh tasks for this project
+        await Provider.of<TaskProvider>(context, listen: false)
+            .fetchTasksForProject(selectedProject.projectUid!.toString());
+        
+        clearForm();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Task '${newTask.title}' created successfully!"))
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Failed to create task. Please try again."),
+            backgroundColor: Colors.red,
+          )
+        );
+      }
     }
   }
 
@@ -149,6 +225,22 @@ void initState() {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final projects = Provider.of<ProjectsProvider>(context).projects;
+    
+    // Update userProjects if they've changed
+    if (projects != userProjects) {
+      userProjects = projects;
+    }
+    
+    // If no projects available, show message
+    if (userProjects.isEmpty) {
+      return const Center(
+        child: Text(
+          "No projects available. Please create a project first.",
+          style: TextStyle(fontSize: 18),
+        ),
+      );
+    }
 
     return Padding(
       padding: const EdgeInsets.all(16.0),
@@ -175,7 +267,7 @@ void initState() {
                       ),
                     ),
                     style: TextStyle(color: theme.colorScheme.onSurface),
-                    validator: (value) => titleValidator(value, projectTasks.contains(value)),
+                    validator: (value) => titleValidator(value, false),
                     onFieldSubmitted: (_) {
                       FocusScope.of(context).requestFocus(descriptionFocusNode);
                     },
@@ -276,31 +368,57 @@ void initState() {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  const SizedBox(height: 16),
                   Text("This belongs to:", style: theme.textTheme.titleMedium),
-                  DropdownButtonFormField<String>(
-                    value: taskParentNotifier.value, 
-                    items: possibleTaskParent.map((parent) {
-                      return DropdownMenuItem(
-                        value: parent,
-                        child: Text(
-                          parent,
-                          style: TextStyle(color: theme.colorScheme.onSurface),
+                  ValueListenableBuilder<int?>(
+                    valueListenable: taskProjectNotifier,
+                    builder: (context, selectedProjectUid, child) {
+                      return DropdownButtonFormField<int>(
+                        value: selectedProjectUid,
+                        items: userProjects
+                            .where((project) => project.projectUid != null)
+                            .map((project) {
+                          return DropdownMenuItem(
+                            value: project.projectUid,  // Use projectUid (integer)
+                            child: Text(
+                              project.projectName,
+                              style: TextStyle(color: theme.colorScheme.onSurface),
+                            ),
+                          );
+                        }).toList(),
+                        onChanged: (value) {
+                          if (value != null) {
+                            taskProjectNotifier.value = value;
+                            // Load members for the selected project
+                            Project? selectedProject = userProjects.firstWhere(
+                              (project) => project.projectUid == value,
+                              orElse: () => userProjects.first,
+                            );
+                            setState(() {
+                              projectMembers = List.from(selectedProject.members.keys);
+                              // Reset selected username to first member or keep current if still valid
+                              if (!projectMembers.contains(_selectedUsername)) {
+                                _selectedUsername = projectMembers.isNotEmpty ? projectMembers.first : null;
+                              }
+                            });
+                          }
+                        },
+                        decoration: InputDecoration(
+                          hintText: "Select Project",
+                          filled: true,
+                          fillColor: theme.colorScheme.surface,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
                         ),
+                        validator: (value) {
+                          if (value == null) {
+                            return "Please select a project";
+                          }
+                          return null;
+                        },
                       );
-                    }).toList(),
-                    onChanged: (value) {
-                      if (value != null) {
-                        taskParentNotifier.value = value; 
-                      }
                     },
-                    decoration: InputDecoration(
-                      hintText: "Select Parent Task",
-                      filled: true,
-                      fillColor: theme.colorScheme.surface,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
                   ),                   
                   const SizedBox(height: 16),
                   Text("Task's Weight", style: theme.textTheme.titleMedium),
@@ -326,51 +444,36 @@ void initState() {
                         return message;
                       },
                     onFieldSubmitted: (_) {
-                      FocusScope.of(context).requestFocus(tagFocusNode);
+                      FocusScope.of(context).requestFocus(percentageFocusNode);
                     },
                   ),
 
                   const SizedBox(height: 16),
-                  Text("Tags", style: theme.textTheme.titleMedium),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextFormField(
-                          controller: tagController,
-                          focusNode: tagFocusNode,
-                          decoration: InputDecoration(
-                            hintText: "Add a tag",
-                            filled: true,
-                            fillColor: theme.colorScheme.surface,
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                          ),
+                  Text("Tag", style: theme.textTheme.titleMedium),
+                  DropdownButtonFormField<TagsEnum>(
+                    value: selectedTag,
+                    decoration: InputDecoration(
+                      hintText: "Select a tag",
+                      filled: true,
+                      fillColor: theme.colorScheme.surface,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    items: TagsEnum.values.map((tag) {
+                      return DropdownMenuItem(
+                        value: tag,
+                        child: Text(
+                          tag.displayName,
                           style: TextStyle(color: theme.colorScheme.onSurface),
                         ),
-                      ),
-                      IconButton(
-                        icon: Icon(Icons.add, color: theme.colorScheme.primary),
-                        onPressed: () {
-                          if (tagController.text.trim().isNotEmpty) {
-                            setState(() {
-                              tags.add(tagController.text.trim());
-                            });
-                            tagController.clear();
-                          }
-                        },
-                      ),
-                    ],
-                  ),
-                  Wrap(
-                    children: tags
-                        .map((tag) => Chip(
-                              label: Text(tag,
-                                  style: TextStyle(
-                                      color: theme.colorScheme.onPrimary)),
-                              backgroundColor: theme.colorScheme.primary,
-                            ))
-                        .toList(),
+                      );
+                    }).toList(),
+                    onChanged: (value) {
+                      setState(() {
+                        selectedTag = value;
+                      });
+                    },
                   ),
                   const SizedBox(height: 16),
                   Text("Assignee(s)", style: theme.textTheme.titleMedium),
@@ -379,25 +482,29 @@ void initState() {
                       Expanded(
                         child: DropdownButtonFormField<String>(
                           value: _selectedUsername,
+                          hint: const Text("Select assignee"),
                           decoration: InputDecoration(
-                            hintText: "Assignee",                            
                             filled: true,
                             fillColor: theme.colorScheme.surface,
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(8),
                             ),
                           ),
-                          items: projectMembers.map((member) {
-                            return DropdownMenuItem<String>(
-                              value: member,
-                              child: Text(member),
-                            );
-                          }).toList(),
-                          onChanged: (value) {
-                            setState(() {
-                              _selectedUsername = value!;
-                            });
-                          },
+                          items: projectMembers.isNotEmpty 
+                            ? projectMembers.map((member) {
+                                return DropdownMenuItem<String>(
+                                  value: member,
+                                  child: Text(member),
+                                );
+                              }).toList()
+                            : null,
+                          onChanged: projectMembers.isNotEmpty 
+                            ? (value) {
+                                setState(() {
+                                  _selectedUsername = value!;
+                                });
+                              }
+                            : null,
                         ),
                       ),
                       const SizedBox(width: 16),
@@ -428,9 +535,11 @@ void initState() {
                       IconButton(
                         icon: Icon(Icons.add, color: theme.colorScheme.primary),
                         onPressed: () {
-                          taskMember[_selectedUsername] = _selectedRole.name;
+                          if (_selectedUsername != null) {
+                            taskMember[_selectedUsername!] = _selectedRole.name;
+                          }
                           
-                          _selectedUsername = username;
+                          _selectedUsername = projectMembers.isNotEmpty ? projectMembers.first : null;
                           _selectedRole = Role.editor;
                           setState(() {}); 
                         },

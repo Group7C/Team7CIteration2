@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import '../Objects/task.dart';
 
-/// Utility functions for Task management
+// utility functions for task display and formatting
+// [provides consistent task visuals throughout app]
 class TaskUtils {
-  /// Format a task priority as a human-readable string with an icon
+  // formats priority with appropriate icon and colour
+  // [visual indicator scales from green to red]
   static Widget formatTaskPriority(int priority) {
     IconData icon;
     Color color;
@@ -44,13 +46,15 @@ class TaskUtils {
     );
   }
   
-  /// Calculate days remaining until a task is due
+  // calculates days until task deadline
+  // [returns negative values for overdue tasks]
   static int calculateDaysRemaining(DateTime dueDate) {
     final today = DateTime.now();
     return dueDate.difference(today).inDays;
   }
   
-  /// Format days remaining as a string with appropriate coloring
+  // formats due date with appropriate urgency indicators
+  // [colour coding based on days remaining]
   static Widget formatDaysRemaining(DateTime dueDate) {
     final daysRemaining = calculateDaysRemaining(dueDate);
     
@@ -74,7 +78,8 @@ class TaskUtils {
     return Text(text, style: TextStyle(color: textColor, fontWeight: FontWeight.bold));
   }
   
-  /// Get color for a task status
+  // gets colour for status indicator
+  // [consistent colours across app]
   static Color getStatusColor(Status status) {
     switch (status) {
       case Status.todo:

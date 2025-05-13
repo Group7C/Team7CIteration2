@@ -7,9 +7,11 @@ import '../usser/usserObject.dart';
 import 'project_model.dart';
 import '../shared/components/date_picker_field.dart';
 import 'validation/add_project_validation.dart';
+import '../shared/components/small_modal.dart';
 
-/// IMPLEMENTATION DIRECTLY INSPIRED BY VOULAS WORK ON THE ADD TASK SCREEN
-
+// screen for creating new projects or joining existing ones
+// provides form for project details and option to enter join code
+// [inspired by Voula's add task screen implementation - basically just a recreation of that for adding projects]
 class AddProjectScreen extends StatefulWidget {
   const AddProjectScreen({Key? key}) : super(key: key);
 
@@ -18,31 +20,35 @@ class AddProjectScreen extends StatefulWidget {
 }
 
 class _AddProjectScreenState extends State<AddProjectScreen> {
-  // Controllers
+  // text input controllers [for form fields]
   final TextEditingController projectNameController = TextEditingController();
   final TextEditingController joinCodeController = TextEditingController();
   final TextEditingController deadlineController = TextEditingController();
   final TextEditingController googleDriveLinkController = TextEditingController();
   final TextEditingController discordLinkController = TextEditingController();
   
-  // Focus Nodes
+  // focus nodes for managing keyboard navigation
   final FocusNode projectNameFocusNode = FocusNode();
   final FocusNode joinCodeFocusNode = FocusNode();
   final FocusNode deadlineFocusNode = FocusNode();
   final FocusNode googleDriveLinkFocusNode = FocusNode();
   final FocusNode discordLinkFocusNode = FocusNode();
   
-  // Form key for validation
+  // form validation key
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   
-  // Error text variables
+  // error messages for feedback
   String? projectNameErrorText;
   String? joinCodeErrorText;
   
-  // Notification frequency
+  // separate controller for project joining modal
+  final TextEditingController joinProjectCodeController = TextEditingController();
+  
+  // track notification settings with value notifier [for dropdown]
   final ValueNotifier<NotificationFrequency> notificationFrequencyNotifier = 
       ValueNotifier<NotificationFrequency>(NotificationFrequency.weekly);
   
+  // resets all form values and clears focus
   void clearForm() {
     setState(() {
       projectNameController.clear();
@@ -56,15 +62,16 @@ class _AddProjectScreenState extends State<AddProjectScreen> {
     });
   }
   
+  // creates project after validation
   void submitProject() {
-    // Reset error text
+    // reset previous error messages
     setState(() {
       projectNameErrorText = null;
       joinCodeErrorText = null;
     });
     
     if (_formKey.currentState!.validate()) {
-      // Perform regex validation
+      // run regex validation for project name and join code
       String projectNameRegOutcome = regexProjectName(projectNameController.text);
       if (projectNameRegOutcome != "0") {
         setState(() {
@@ -81,10 +88,10 @@ class _AddProjectScreenState extends State<AddProjectScreen> {
         return;
       }
       
-      // Generate a UUID for the project
+      // generate unique id for new project
       final uuid = const Uuid().v4();
       
-      // Create new project object
+      // create project object with form data
       final Project newProject = Project(
         projectName: projectNameController.text,
         joinCode: joinCodeController.text,
@@ -95,10 +102,10 @@ class _AddProjectScreenState extends State<AddProjectScreen> {
         discordLink: discordLinkController.text.isEmpty ? null : discordLinkController.text,
       );
       
-      // Get user ID from Usser object
+      // get current user id for backend
       String userId = Provider.of<Usser>(context, listen: false).usserID;
       
-      // Create project online
+      // send project to server [handles creation and user assignment]
       Provider.of<ProjectsProvider>(context, listen: false)
         .createProjectOnline(newProject, userId)
         .then((success) {
@@ -113,11 +120,12 @@ class _AddProjectScreenState extends State<AddProjectScreen> {
           }
         });
       
-      // Clear form in either case
+      // clear form regardless of server response
       clearForm();
     }
   }
   
+  // converts enum to display string for dropdown
   String _formatFrequency(NotificationFrequency frequency) {
     switch (frequency) {
       case NotificationFrequency.daily:
@@ -133,21 +141,22 @@ class _AddProjectScreenState extends State<AddProjectScreen> {
   
   @override
   void dispose() {
-    // Dispose controllers
+    // clean up controllers to prevent memory leaks
     projectNameController.dispose();
     joinCodeController.dispose();
     deadlineController.dispose();
     googleDriveLinkController.dispose();
     discordLinkController.dispose();
+    joinProjectCodeController.dispose();
     
-    // Dispose focus nodes
+    // clean up focus nodes
     projectNameFocusNode.dispose();
     joinCodeFocusNode.dispose();
     deadlineFocusNode.dispose();
     googleDriveLinkFocusNode.dispose();
     discordLinkFocusNode.dispose();
     
-    // Dispose notifiers
+    // clean up notifiers
     notificationFrequencyNotifier.dispose();
     
     super.dispose();
@@ -159,12 +168,16 @@ class _AddProjectScreenState extends State<AddProjectScreen> {
     
     return Padding(
       padding: const EdgeInsets.all(16.0),
-      child: Form(
-        key: _formKey,
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Left Column
+      child: Column(
+        children: [
+          // main form with two column layout [left and right sides]
+          Expanded(
+            child: Form(
+              key: _formKey,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+            // left column [essential project details]
             Expanded(
               flex: 1,
               child: Column(
@@ -260,7 +273,7 @@ class _AddProjectScreenState extends State<AddProjectScreen> {
             
             const SizedBox(width: 32),
             
-            // Right Column
+            // right column [optional links and action buttons]
             Expanded(
               flex: 1,
               child: Column(
@@ -306,10 +319,10 @@ class _AddProjectScreenState extends State<AddProjectScreen> {
                     },
                   ),
                   
-                  // Push buttons to bottom
+                  // push buttons to bottom of column
                   const Spacer(),
                   
-                  // Action Buttons
+                  // action buttons [clear and create]
                   Row(
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
@@ -335,8 +348,161 @@ class _AddProjectScreenState extends State<AddProjectScreen> {
                 ],
               ),
             ),
-          ],
-        ),
+                ],
+              ),
+            ),
+          ),
+          
+          // join existing project section [alternative to creating]
+          Column(
+            children: [
+              const SizedBox(height: 32),
+              Row(
+                children: [
+                  Expanded(
+                    child: Divider(
+                      color: theme.colorScheme.outline,
+                      thickness: 1,
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Text(
+                      'or join a project',
+                      style: theme.textTheme.bodyLarge?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: Divider(
+                      color: theme.colorScheme.outline,
+                      thickness: 1,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton.icon(
+                onPressed: () {
+                  // opens modal popup to join existing project with code
+                  showSmallModal(
+                    context: context,
+                    title: 'Join Existing Project',
+                    showActionButtons: false,
+                    content: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'Enter a join code to join an existing project',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        TextFormField(
+                          controller: joinProjectCodeController,
+                          textAlign: TextAlign.center,
+                          style: theme.textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 8.0,
+                            color: theme.colorScheme.primary,
+                          ),
+                          decoration: InputDecoration(
+                            hintText: "Enter join code",
+                            hintStyle: theme.textTheme.bodyLarge?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                              letterSpacing: 0,
+                            ),
+                            filled: true,
+                            fillColor: theme.colorScheme.surface,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 20,
+                              vertical: 16,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        Center(
+                          child: ElevatedButton(
+                            onPressed: () {
+                              // validate join code
+                              final joinCode = joinProjectCodeController.text.trim();
+                              if (joinCode.isEmpty) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text("Please enter a join code"))
+                                );
+                                return;
+                              }
+                              
+                              // get current user id
+                              final userId = Provider.of<Usser>(context, listen: false).usserID;
+                              
+                              // show loading spinner
+                              showDialog(
+                                context: context,
+                                barrierDismissible: false,
+                                builder: (context) => const Center(
+                                  child: CircularProgressIndicator(),
+                                ),
+                              );
+                              
+                              // join project on server [adds user to project member list]
+                              Provider.of<ProjectsProvider>(context, listen: false)
+                                .joinProjectWithCode(joinCode, userId)
+                                .then((result) {
+                                  // hide spinner
+                                  Navigator.of(context).pop();
+                                  // close join modal
+                                  Navigator.of(context).pop();
+                                  
+                                  // show success/error message
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(result['message'] ?? 'Unknown error'),
+                                      backgroundColor: result['status'] == 'success' 
+                                          ? Colors.green 
+                                          : Colors.red,
+                                    )
+                                  );
+                                });
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: theme.colorScheme.primary,
+                              foregroundColor: theme.colorScheme.onPrimary,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 32,
+                                vertical: 16,
+                              ),
+                            ),
+                            child: const Text("Join Now"),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.person_add),
+                label: const Text("Join Project"),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: theme.colorScheme.primary,
+                  foregroundColor: theme.colorScheme.onPrimary,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 32,
+                    vertical: 16,
+                  ),
+                  textStyle: theme.textTheme.labelLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

@@ -3,9 +3,11 @@ import '../Objects/task.dart';
 import '../providers/tasks_provider.dart';
 import '../shared/components/date_picker_field.dart';
 import 'package:provider/provider.dart';
+import '../providers/projects_provider.dart';
+import '../projects/project_model.dart';
 
-// BASED ON VOULAS ADD TASK SCREEN - NOT CLAIMING TO BE ORIGINAL
-
+// screen for modifying or deleting existing tasks
+// [inspired by voula's add task screen implementation - just recreated it for task editing, much copy pasting]
 class EditTaskScreen extends StatefulWidget {
   const EditTaskScreen({Key? key}) : super(key: key);
 
@@ -14,15 +16,16 @@ class EditTaskScreen extends StatefulWidget {
 }
 
 class _EditTaskScreenState extends State<EditTaskScreen> {
-  // Controllers
+  // form field controllers [for user input]
   final TextEditingController titleController = TextEditingController();
   final TextEditingController descriptionController = TextEditingController();
   final TextEditingController endDateController = TextEditingController();
   final TextEditingController priorityController = TextEditingController();
   final TextEditingController percentageWeightingController = TextEditingController();
   final TextEditingController tagController = TextEditingController();
+  final TextEditingController projectController = TextEditingController();
   
-  // Focus Nodes
+  // focus management for form navigation
   final FocusNode titleFocusNode = FocusNode();
   final FocusNode descriptionFocusNode = FocusNode();
   final FocusNode endDateFocusNode = FocusNode();
@@ -30,52 +33,76 @@ class _EditTaskScreenState extends State<EditTaskScreen> {
   final FocusNode percentageFocusNode = FocusNode();
   final FocusNode tagFocusNode = FocusNode();
   
-  // Form Key
+  // form validation
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   
-  // Task Selection
+  // task selection state
   int? selectedTaskIndex;
   Task? selectedTask;
+  String? selectedProjectId;
   
-  // Members Management
-  List<String> projectMembers = ['Alice', 'Bob', 'Charlie'];
+  // member management
+  List<String> projectMembers = [];
   Map<String, String> taskMembers = {};
-  String _selectedUsername = 'Alice';
+  String? _selectedUsername;
   Role _selectedRole = Role.editor;
   
-  // Notifications
+  // notification settings
   final ValueNotifier<NotificationFrequency> notificationFrequencyNotifier = 
       ValueNotifier<NotificationFrequency>(NotificationFrequency.daily);
   bool notificationPreference = true;
   
-  // Tags
+  // task metadata
   List<String> tags = [];
   
-  // Parent Project
-  String projectName = "MyProject";
-  List<String> projectTasks = ["Task1", "Task 2"];
-  List<String> get possibleTaskParent => [projectName, ...projectTasks];
-  late final ValueNotifier<String> taskParentNotifier;
+  // project data
+  List<Project> userProjects = [];
+  String? taskParentProject;
   
   @override
   void initState() {
     super.initState();
-    taskParentNotifier = ValueNotifier<String>(possibleTaskParent.first);
+    _loadProjectsAndTasks();
   }
   
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _loadTasks();
-  }
-  
-  void _loadTasks() {
-    final tasks = Provider.of<TaskProvider>(context, listen: false).tasks;
-    if (tasks.isNotEmpty && selectedTaskIndex == null) {
-      _selectTask(0);
+  // loads all tasks for all user projects
+  // [handles fixing project references]
+  void _loadProjectsAndTasks() async {
+    // get user projects
+    userProjects = Provider.of<ProjectsProvider>(context, listen: false).projects;
+    
+    // access task provider
+    final taskProvider = Provider.of<TaskProvider>(context, listen: false);
+    
+    // clear existing tasks
+    taskProvider.tasks.clear();
+    
+    // fetch tasks for each project
+    for (var project in userProjects) {
+      if (project.projectUid != null) {
+        await taskProvider.fetchTasksForProject(project.projectUid.toString());
+        
+        // fix parent project references
+        for (var task in taskProvider.tasks) {
+          if (task.parentProject == project.projectUid.toString()) {
+            task.parentProject = project.projectName;
+          }
+        }
+      }
+    }
+    
+    // set initial selection if tasks exist
+    if (mounted) {
+      setState(() {
+        if (taskProvider.tasks.isNotEmpty) {
+          _selectTask(0);
+        }
+      });
     }
   }
   
+  // populates form with selected task data
+  // [updates all fields and dropdowns]
   void _selectTask(int index) {
     final tasks = Provider.of<TaskProvider>(context, listen: false).tasks;
     if (index >= 0 && index < tasks.length) {
@@ -84,13 +111,24 @@ class _EditTaskScreenState extends State<EditTaskScreen> {
         selectedTaskIndex = index;
         selectedTask = task;
         
-        // Populate form with task data
+        // find project for this task
+        Project? taskProject = userProjects.firstWhere(
+          (project) => project.projectName == task.parentProject,
+          orElse: () => userProjects.first,
+        );
+        selectedProjectId = taskProject.projectUid?.toString();
+        
+        // get project members with duplicates removed
+        projectMembers = taskProject.members.keys.toSet().toList();
+        _selectedUsername = projectMembers.isNotEmpty ? projectMembers.first : null;
+        
+        // populate all form fields from task data
         titleController.text = task.title;
         descriptionController.text = task.description;
-        endDateController.text = task.endDate.toString().split(' ')[0]; // Just the date part
+        endDateController.text = "${task.endDate.year}-${task.endDate.month.toString().padLeft(2, '0')}-${task.endDate.day.toString().padLeft(2, '0')}";
         priorityController.text = task.priority.toString();
-        percentageWeightingController.text = task.percentageWeighting.toString();
-        taskParentNotifier.value = task.parentProject ?? possibleTaskParent.first;
+        percentageWeightingController.text = task.percentageWeighting.toStringAsFixed(0);
+        projectController.text = task.parentProject ?? '';
         tags = List.from(task.listOfTags);
         taskMembers = Map.from(task.members);
         notificationFrequencyNotifier.value = task.notificationFrequency;
@@ -99,16 +137,23 @@ class _EditTaskScreenState extends State<EditTaskScreen> {
     }
   }
   
-  void _saveTask() {
-    if (_formKey.currentState!.validate() && selectedTask != null) {
+  // saves task changes to backend and local state
+  // [performs validation before saving]
+  void _saveTask() async {
+    if (_formKey.currentState!.validate() && selectedTask != null && selectedProjectId != null) {
+      // save original title for identification
+      final String originalTitle = selectedTask!.title;
+      
+      // create updated task object
       final updatedTask = Task(
+        taskId: selectedTask!.taskId,  
         title: titleController.text,
-        parentProject: taskParentNotifier.value,
-        status: selectedTask!.status, // Keep current status
+        parentProject: taskParentProject ?? selectedTask!.parentProject,
+        status: selectedTask!.status, 
         percentageWeighting: double.tryParse(percentageWeightingController.text) ?? 0.0,
         listOfTags: tags,
         priority: int.tryParse(priorityController.text) ?? 1,
-        startDate: selectedTask!.startDate, // Keep original start date
+        startDate: selectedTask!.startDate, 
         endDate: DateTime.parse(endDateController.text),
         description: descriptionController.text,
         members: Map.from(taskMembers),
@@ -118,13 +163,94 @@ class _EditTaskScreenState extends State<EditTaskScreen> {
         comments: selectedTask!.comments,
       );
       
-      Provider.of<TaskProvider>(context, listen: false).updateTask(updatedTask);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Task '${updatedTask.title}' updated successfully!"))
-      );
+      // send updated task to backend
+      bool success = await Provider.of<TaskProvider>(context, listen: false)
+          .updateTaskOnline(updatedTask, selectedProjectId!);
+      
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Task '${updatedTask.title}' updated successfully!"))
+        );
+        
+        // refresh task list
+        _loadProjectsAndTasks();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Failed to update task. Please try again."),
+            backgroundColor: Colors.red,
+          )
+        );
+      }
     }
   }
   
+  // deletes task with confirmation
+  // [shows loading during processing]
+  void _deleteTask() async {
+    if (selectedTask != null && selectedProjectId != null) {
+      // confirm deletion first
+      bool? confirmDelete = await showDialog<bool>(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: const Text('Delete Task'),
+            content: Text('Are you sure you want to delete "${selectedTask!.title}"? This action cannot be undone.'),
+            actions: <Widget>[
+              TextButton(
+                child: const Text('Cancel'),
+                onPressed: () => Navigator.of(context).pop(false),
+              ),
+              TextButton(
+                child: const Text('Delete', style: TextStyle(color: Colors.red)),
+                onPressed: () => Navigator.of(context).pop(true),
+              ),
+            ],
+          );
+        },
+      );
+      
+      if (confirmDelete == true) {
+        // show loading spinner
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (BuildContext context) {
+            return const Center(
+              child: CircularProgressIndicator(),
+            );
+          },
+        );
+        
+        // perform deletion
+        bool success = await Provider.of<TaskProvider>(context, listen: false)
+            .deleteTaskOnline(selectedTask!.taskId.toString(), selectedProjectId!);
+        
+        // hide spinner
+        Navigator.pop(context);
+        
+        if (success) {
+          // show success message
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("Task '${selectedTask!.title}' deleted successfully!"))
+          );
+          
+          // refresh task list
+          _loadProjectsAndTasks();
+        } else {
+          // show error message
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("Failed to delete task. Please try again."),
+              backgroundColor: Colors.red,
+            )
+          );
+        }
+      }
+    }
+  }
+  
+  // formats notification frequency for display
   String _formatFrequency(NotificationFrequency frequency) {
     switch (frequency) {
       case NotificationFrequency.daily:
@@ -140,15 +266,16 @@ class _EditTaskScreenState extends State<EditTaskScreen> {
   
   @override
   void dispose() {
-    // Dispose controllers
+    // clean up controllers
     titleController.dispose();
     descriptionController.dispose();
     endDateController.dispose();
     priorityController.dispose();
     percentageWeightingController.dispose();
     tagController.dispose();
+    projectController.dispose();
     
-    // Dispose focus nodes
+    // clean up focus nodes
     titleFocusNode.dispose();
     descriptionFocusNode.dispose();
     endDateFocusNode.dispose();
@@ -156,9 +283,8 @@ class _EditTaskScreenState extends State<EditTaskScreen> {
     percentageFocusNode.dispose();
     tagFocusNode.dispose();
     
-    // Dispose notifiers
+    // clean up notifiers
     notificationFrequencyNotifier.dispose();
-    taskParentNotifier.dispose();
     
     super.dispose();
   }
@@ -168,10 +294,11 @@ class _EditTaskScreenState extends State<EditTaskScreen> {
     final theme = Theme.of(context);
     final tasks = Provider.of<TaskProvider>(context).tasks;
     
+    // loading state or empty state
     if (tasks.isEmpty) {
       return const Center(
         child: Text(
-          "No tasks available to edit",
+          "No tasks available to edit. Loading...",
           style: TextStyle(fontSize: 18),
         ),
       );
@@ -182,7 +309,7 @@ class _EditTaskScreenState extends State<EditTaskScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Task Selection Dropdown
+          // task selection dropdown [at top]
           Row(
             children: [
               Text("Select Task to Edit:", style: theme.textTheme.titleMedium),
@@ -190,6 +317,7 @@ class _EditTaskScreenState extends State<EditTaskScreen> {
               Expanded(
                 child: DropdownButtonFormField<int>(
                   value: selectedTaskIndex,
+                  hint: const Text("Select a task"),
                   items: List.generate(tasks.length, (index) {
                     return DropdownMenuItem(
                       value: index,
@@ -215,7 +343,7 @@ class _EditTaskScreenState extends State<EditTaskScreen> {
           
           const SizedBox(height: 24),
           
-          // Task Edit Form
+          // main edit form [two column layout]
           Expanded(
             child: selectedTask == null
                 ? const Center(child: Text("Please select a task to edit"))
@@ -224,7 +352,7 @@ class _EditTaskScreenState extends State<EditTaskScreen> {
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Left Column
+                        // left column [basics and dates]
                         Expanded(
                           flex: 1,
                           child: SingleChildScrollView(
@@ -276,7 +404,8 @@ class _EditTaskScreenState extends State<EditTaskScreen> {
                                 
                                 const SizedBox(height: 16),
                                 Text("Priority Level", style: theme.textTheme.titleMedium),
-                                DropdownButtonFormField(
+                                // priority dropdown with 1-5 scale
+                                DropdownButtonFormField<String>(
                                   value: priorityController.text.isNotEmpty 
                                       ? priorityController.text 
                                       : "1",
@@ -344,39 +473,26 @@ class _EditTaskScreenState extends State<EditTaskScreen> {
                         
                         const SizedBox(width: 32),
                         
-                        // Right Column
+                        // right column [metadata and members]
                         Expanded(
                           flex: 1,
                           child: SingleChildScrollView(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text("This belongs to:", style: theme.textTheme.titleMedium),
-                                ValueListenableBuilder<String>(
-                                  valueListenable: taskParentNotifier,
-                                  builder: (context, parentValue, child) {
-                                    return DropdownButtonFormField<String>(
-                                      value: parentValue,
-                                      items: possibleTaskParent
-                                          .map((parent) => DropdownMenuItem(
-                                                value: parent,
-                                                child: Text(parent),
-                                              ))
-                                          .toList(),
-                                      onChanged: (value) {
-                                        if (value != null) {
-                                          taskParentNotifier.value = value;
-                                        }
-                                      },
-                                      decoration: InputDecoration(
-                                        filled: true,
-                                        fillColor: theme.colorScheme.surface,
-                                        border: OutlineInputBorder(
-                                          borderRadius: BorderRadius.circular(8),
-                                        ),
-                                      ),
-                                    );
-                                  },
+                                Text("Project:", style: theme.textTheme.titleMedium),
+                                // non-editable project field [determined by task]
+                                TextFormField(
+                                  controller: projectController,
+                                  enabled: false,
+                                  decoration: InputDecoration(
+                                    filled: true,
+                                    fillColor: theme.colorScheme.surface.withOpacity(0.5),
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                  ),
+                                  style: TextStyle(color: theme.colorScheme.onSurface),
                                 ),
                                 
                                 const SizedBox(height: 16),
@@ -409,6 +525,7 @@ class _EditTaskScreenState extends State<EditTaskScreen> {
                                 
                                 const SizedBox(height: 16),
                                 Text("Tags", style: theme.textTheme.titleMedium),
+                                // tag input with add button
                                 Row(
                                   children: [
                                     Expanded(
@@ -439,6 +556,7 @@ class _EditTaskScreenState extends State<EditTaskScreen> {
                                   ],
                                 ),
                                 
+                                // tags chips display [removable]
                                 Wrap(
                                   spacing: 8,
                                   children: tags
@@ -458,11 +576,13 @@ class _EditTaskScreenState extends State<EditTaskScreen> {
                                 
                                 const SizedBox(height: 16),
                                 Text("Members", style: theme.textTheme.titleMedium),
+                                // member selection controls
                                 Row(
                                   children: [
                                     Expanded(
                                       child: DropdownButtonFormField<String>(
                                         value: _selectedUsername,
+                                        hint: const Text("Select member"),
                                         items: projectMembers
                                             .map((member) => DropdownMenuItem(
                                                   value: member,
@@ -514,15 +634,18 @@ class _EditTaskScreenState extends State<EditTaskScreen> {
                                     IconButton(
                                       icon: Icon(Icons.add, color: theme.colorScheme.primary),
                                       onPressed: () {
-                                        setState(() {
-                                          taskMembers[_selectedUsername] = _selectedRole.name;
-                                        });
+                                        if (_selectedUsername != null) {
+                                          setState(() {
+                                            taskMembers[_selectedUsername!] = _selectedRole.name;
+                                          });
+                                        }
                                       },
                                     ),
                                   ],
                                 ),
                                 
                                 const SizedBox(height: 8),
+                                // member chips display [removable]
                                 Wrap(
                                   spacing: 8,
                                   children: taskMembers.entries
@@ -542,10 +665,25 @@ class _EditTaskScreenState extends State<EditTaskScreen> {
                                 
                                 const SizedBox(height: 32),
                                 
-                                // Save Button
+                                // action buttons [delete and save]
                                 Row(
                                   mainAxisAlignment: MainAxisAlignment.end,
                                   children: [
+                                    ElevatedButton(
+                                      onPressed: _deleteTask,
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: theme.colorScheme.error,
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 24,
+                                          vertical: 12,
+                                        ),
+                                      ),
+                                      child: Text(
+                                        "Delete Task",
+                                        style: TextStyle(color: theme.colorScheme.onError),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 16),
                                     ElevatedButton(
                                       onPressed: _saveTask,
                                       style: ElevatedButton.styleFrom(

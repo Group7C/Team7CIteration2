@@ -30,6 +30,7 @@ extension StatusExtension on Status {
 
 class Task with ChangeNotifier {
 
+  int? taskId;  // Database task ID
   String title;
   String? parentProject;
   double percentageWeighting;
@@ -46,6 +47,7 @@ class Task with ChangeNotifier {
   Status status = Status.todo;
 
   Task({
+    this.taskId,  // Add task ID
     required this.title,
     this.parentProject,
     required this.status,

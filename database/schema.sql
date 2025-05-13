@@ -1,5 +1,5 @@
 -- DOUBLE CHECK THE DIFFERENT OPTIONS
-CREATE TYPE notification_enum AS ENUM ('Daily', 'Weekly');
+--CREATE TYPE notification_enum AS ENUM ('Daily', 'Weekly');
 
 -- DOUBLE CHECK THE DIFFERENT OPTIONS
 CREATE TYPE role_enum AS ENUM ('Editor', 'Viewer');
@@ -8,7 +8,7 @@ CREATE TYPE role_enum AS ENUM ('Editor', 'Viewer');
 CREATE TYPE tags_enum AS ENUM ('Science', 'Research', 'Maths', 'Group', 'Individual', 'Hard', 'Normal', 'Easy');
 
 -- DOUBLE CHECK THE OPTIONS
---CREATE TYPE notification_enum AS ENUM ('Never', 'Daily', 'Weekly', 'Monthly');
+CREATE TYPE notification_enum AS ENUM ('Never', 'Daily', 'Weekly', 'Monthly');
 
 -- DOUBLE CHECK THE OPTIONS
 CREATE TYPE meeting_enum AS ENUM ('In-person', 'Online');
