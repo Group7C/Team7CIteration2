@@ -2,81 +2,272 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/theme_provider.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
+import 'dart:typed_data';
+import '../usser/usserObject.dart';
+import 'components/profilephotoWidget.dart';
+import 'package:url_launcher/url_launcher.dart';
 
-class SettingsPage extends StatelessWidget {
+// Placeholder image in case user has no profile photo
+final Uint8List placeHolderImage = Uint8List.fromList([255, 216, 255, 224, 0, 16, 74, 70, 73, 70, 0, 1, 1, 0, 0, 1, 0, 1, 0, 0, 255, 219, 0, 132, 0, 9, 6, 7, 18, 16, 18, 15, 16, 16, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 13, 13, 15, 13, 21, 17, 22, 22, 21, 17, 21, 21, 24, 29, 40, 32, 24, 26, 37, 27, 21, 21, 33, 49, 33, 37, 41, 43, 46, 46, 46, 23, 31, 51, 56, 51, 45, 55, 40, 45, 46, 43, 1, 10, 10, 10, 13, 13, 14, 21, 15, 15, 15, 43, 25, 21, 25, 43, 43, 43, 43, 43, 43, 45, 43, 43, 47, 43, 43, 45, 43, 55, 55, 45, 55, 43, 45, 55, 45, 45, 55, 55, 45, 45, 55, 45, 45, 45, 43, 43, 43, 55, 43, 43, 43, 45, 55, 43, 43, 43, 43, 43, 43, 43, 43, 43, 43, 255, 192, 0, 17, 8, 1, 3, 0, 194, 3, 1, 34, 0, 2, 17, 1, 3, 17, 1, 255, 196, 0, 28, 0, 0, 1, 5, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 1, 2, 4, 5, 6, 0, 7, 8, 255, 196, 0, 42, 16, 0, 2, 2, 2, 2, 1, 4, 3, 1, 0, 2, 3, 1, 0, 0, 0, 0, 1, 2, 3, 4, 17, 5, 33, 18, 6, 19, 49, 65, 81, 97, 113, 20, 50, 129, 34, 145, 161, 7, 255, 196, 0, 24, 1, 0, 3, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3, 4, 255, 196, 0, 29, 17, 1, 1, 1, 1, 0, 3, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 17, 2, 18, 33, 49, 3, 97, 19, 255, 218, 0, 12, 3, 1, 0, 2, 17, 3, 17, 0, 63, 0, 192, 215, 74, 159, 247, 233, 162, 199, 143, 141, 148, 202, 50, 77, 244, 215, 104, 174, 194, 139, 140, 191, 38, 219, 135, 198, 141, 145, 91, 255, 0, 232, 161, 86, 235, 211, 28, 147, 182, 181, 229, 242, 139, 247, 106, 90, 253, 24, 236, 27, 163, 143, 31, 157, 9, 46, 123, 220, 126, 41, 244, 105, 25, 89, 237, 168, 206, 228, 188, 180, 162, 254, 22, 153, 9, 90, 64, 170, 221, 133, 86, 17, 223, 77, 120, 229, 53, 88, 26, 185, 16, 235, 123, 37, 71, 224, 206, 85, 208, 165, 46, 199, 169, 2, 98, 57, 25, 249, 47, 3, 201, 91, 42, 114, 41, 236, 178, 182, 100, 11, 164, 18, 218, 21, 89, 148, 173, 51, 35, 201, 203, 77, 154, 238, 66, 221, 38, 97, 121, 107, 182, 217, 114, 39, 65, 141, 236, 177, 192, 229, 165, 6, 180, 202, 37, 32, 181, 167, 177, 88, 111, 67, 194, 245, 84, 146, 91, 123, 46, 177, 253, 80, 154, 249, 236, 243, 26, 219, 65, 99, 124, 151, 216, 78, 172, 43, 204, 106, 61, 69, 159, 238, 237, 239, 102, 30, 236, 86, 219, 111, 242, 89, 44, 166, 250, 98, 203, 178, 188, 244, 188, 113, 75, 100, 116, 117, 53, 54, 76, 182, 142, 198, 74, 74, 61, 15, 79, 17, 51, 186, 71, 165, 255, 0, 249, 254, 31, 183, 141, 22, 214, 156, 187, 60, 210, 200, 251, 147, 132, 127, 50, 72, 246, 126, 50, 159, 10, 171, 138, 250, 138, 14, 75, 164, 147, 142, 56, 164, 188, 151, 27, 25, 111, 108, 187, 175, 57, 86, 186, 42, 236, 159, 138, 232, 174, 191, 35, 246, 78, 226, 188, 86, 249, 188, 180, 165, 190, 198, 241, 121, 173, 73, 111, 242, 82, 171, 137, 56, 179, 239, 101, 115, 116, 172, 199, 163, 96, 101, 121, 34, 193, 72, 200, 113, 25, 159, 91, 52, 216, 246, 108, 142, 207, 149, 182, 49, 63, 93, 16, 240, 98, 88, 56, 244, 62, 103, 162, 191, 80, 102, 6, 108, 149, 100, 72, 243, 70, 54, 52, 136, 182, 178, 5, 242, 38, 100, 50, 186, 230, 62, 69, 82, 243, 54, 233, 51, 17, 149, 61, 201, 154, 254, 109, 244, 204, 132, 227, 219, 254, 155, 51, 54, 170, 201, 113, 73, 17, 103, 102, 128, 79, 40, 138, 168, 180, 247, 144, 159, 232, 69, 21, 153, 122, 251, 1, 44, 255, 0, 216, 188, 84, 209, 127, 165, 6, 133, 232, 202, 71, 55, 178, 109, 57, 95, 176, 241, 176, 52, 63, 37, 118, 90, 236, 126, 54, 70, 208, 12, 189, 128, 77, 244, 206, 63, 187, 147, 95, 226, 47, 103, 176, 69, 116, 151, 224, 243, 47, 64, 99, 55, 100, 167, 167, 209, 233, 177, 52, 159, 25, 245, 244, 167, 9, 179, 134, 79, 28, 205, 200, 209, 89, 59, 118, 38, 93, 221, 254, 200, 234, 18, 100, 72, 209, 38, 50, 38, 227, 72, 171, 155, 241, 31, 70, 97, 175, 28, 163, 170, 210, 97, 100, 233, 175, 233, 184, 225, 108, 242, 72, 242, 250, 50, 251, 71, 162, 250, 74, 207, 37, 18, 63, 73, 236, 249, 110, 48, 107, 232, 151, 49, 152, 241, 210, 27, 145, 110, 135, 242, 23, 218, 13, 178, 33, 221, 96, 204, 140, 130, 190, 204, 147, 11, 90, 206, 71, 179, 178, 29, 213, 142, 87, 157, 41, 236, 82, 157, 138, 94, 79, 15, 205, 51, 35, 200, 99, 120, 108, 244, 11, 254, 12, 71, 169, 39, 173, 154, 74, 140, 101, 178, 175, 237, 149, 215, 228, 253, 33, 249, 50, 219, 100, 103, 75, 249, 46, 66, 183, 7, 255, 0, 43, 146, 222, 254, 136, 50, 139, 79, 68, 152, 229, 56, 175, 16, 18, 123, 47, 211, 61, 169, 52, 85, 228, 130, 164, 226, 201, 28, 101, 93, 6, 206, 171, 72, 158, 162, 249, 162, 224, 221, 240, 89, 219, 20, 209, 71, 198, 196, 208, 226, 211, 228, 226, 191, 45, 25, 45, 181, 244, 70, 39, 141, 94, 75, 236, 211, 147, 61, 47, 197, 211, 93, 48, 111, 255, 0, 46, 147, 214, 254, 201, 179, 186, 62, 90, 132, 34, 191, 233, 26, 220, 147, 219, 47, 118, 169, 182, 113, 162, 84, 254, 151, 254, 142, 30, 7, 204, 222, 30, 83, 255, 0, 178, 69, 235, 75, 161, 184, 240, 212, 153, 46, 220, 119, 36, 76, 87, 76, 238, 77, 207, 122, 29, 67, 218, 36, 102, 225, 105, 252, 2, 141, 122, 53, 229, 157, 62, 166, 252, 146, 253, 158, 185, 232, 92, 103, 227, 22, 207, 56, 224, 56, 185, 91, 100, 122, 235, 104, 246, 175, 79, 225, 251, 80, 93, 125, 19, 221, 246, 174, 126, 46, 124, 180, 138, 252, 203, 190, 67, 100, 93, 162, 163, 42, 227, 46, 171, 94, 121, 2, 251, 72, 51, 176, 125, 179, 35, 179, 10, 222, 65, 99, 32, 209, 145, 15, 98, 198, 208, 133, 98, 115, 91, 70, 87, 212, 188, 118, 211, 210, 52, 181, 90, 118, 69, 10, 104, 185, 89, 88, 242, 11, 48, 218, 109, 52, 35, 199, 253, 30, 131, 159, 192, 111, 180, 140, 246, 95, 28, 224, 251, 93, 23, 230, 139, 203, 27, 151, 137, 45, 237, 32, 85, 99, 203, 127, 12, 216, 44, 84, 254, 133, 142, 20, 71, 254, 159, 193, 224, 172, 193, 135, 138, 248, 29, 149, 7, 34, 219, 252, 233, 12, 113, 138, 21, 239, 68, 231, 21, 248, 152, 190, 37, 158, 61, 158, 45, 17, 172, 185, 34, 52, 178, 5, 13, 236, 30, 151, 228, 156, 234, 75, 127, 70, 155, 141, 130, 249, 60, 171, 209, 153, 207, 106, 59, 232, 245, 94, 54, 93, 21, 61, 244, 87, 226, 216, 64, 62, 71, 27, 235, 60, 124, 231, 102, 43, 82, 222, 186, 44, 40, 248, 237, 19, 96, 147, 250, 38, 83, 136, 159, 194, 57, 181, 173, 154, 207, 229, 226, 121, 125, 29, 129, 192, 74, 201, 37, 167, 163, 109, 131, 193, 121, 53, 180, 106, 120, 238, 18, 48, 215, 69, 206, 234, 124, 98, 159, 211, 158, 158, 141, 73, 61, 26, 89, 234, 43, 72, 59, 143, 138, 43, 242, 236, 3, 145, 15, 42, 226, 178, 235, 3, 100, 218, 65, 178, 102, 61, 87, 79, 60, 155, 41, 3, 216, 147, 144, 9, 76, 134, 158, 34, 202, 100, 121, 216, 54, 115, 35, 206, 67, 133, 98, 125, 55, 150, 184, 211, 217, 154, 174, 221, 50, 223, 11, 32, 184, 195, 184, 188, 140, 19, 33, 103, 113, 49, 154, 125, 6, 170, 226, 84, 44, 21, 136, 214, 15, 147, 225, 165, 13, 180, 138, 59, 124, 163, 242, 122, 173, 244, 70, 107, 180, 102, 121, 158, 21, 61, 180, 134, 24, 139, 50, 0, 78, 224, 220, 150, 51, 131, 125, 21, 82, 144, 240, 134, 178, 96, 162, 112, 74, 160, 80, 106, 253, 29, 255, 0, 53, 253, 61, 127, 142, 255, 0, 138, 254, 30, 65, 233, 105, 120, 206, 63, 211, 216, 56, 217, 110, 40, 124, 253, 23, 226, 97, 194, 121, 156, 104, 151, 144, 224, 83, 228, 210, 72, 218, 240, 220, 58, 105, 54, 138, 159, 78, 113, 233, 233, 179, 123, 135, 82, 138, 73, 25, 225, 233, 49, 240, 148, 87, 72, 59, 134, 130, 140, 177, 143, 19, 168, 57, 82, 209, 159, 206, 200, 249, 45, 57, 75, 116, 153, 141, 228, 51, 26, 108, 139, 91, 113, 7, 182, 221, 145, 231, 34, 174, 92, 128, 250, 243, 83, 50, 177, 213, 202, 92, 230, 13, 200, 21, 150, 3, 86, 11, 22, 44, 217, 14, 251, 146, 25, 155, 147, 164, 102, 57, 14, 95, 77, 173, 151, 35, 62, 170, 250, 89, 75, 242, 75, 194, 205, 239, 228, 198, 209, 147, 41, 254, 77, 7, 21, 83, 235, 101, 72, 231, 234, 182, 152, 119, 108, 178, 174, 69, 71, 31, 29, 36, 90, 65, 142, 178, 74, 82, 25, 114, 218, 208, 216, 72, 115, 98, 54, 75, 212, 28, 90, 123, 122, 48, 121, 152, 174, 50, 104, 245, 252, 186, 148, 145, 133, 231, 176, 52, 219, 208, 224, 101, 163, 2, 93, 17, 59, 218, 11, 82, 40, 46, 184, 137, 106, 81, 127, 179, 214, 184, 139, 55, 92, 95, 232, 242, 94, 46, 59, 113, 254, 163, 212, 56, 165, 170, 215, 240, 80, 45, 125, 228, 33, 27, 200, 225, 232, 83, 250, 114, 58, 72, 214, 208, 186, 50, 220, 4, 117, 164, 106, 33, 45, 33, 160, 102, 193, 216, 198, 74, 193, 174, 97, 161, 95, 159, 79, 146, 102, 83, 148, 227, 126, 122, 54, 214, 34, 183, 46, 148, 204, 171, 78, 107, 202, 249, 44, 57, 69, 189, 17, 241, 27, 95, 38, 247, 145, 227, 211, 223, 70, 107, 39, 7, 197, 252, 9, 191, 61, 4, 167, 208, 53, 49, 36, 244, 5, 204, 49, 190, 129, 200, 118, 153, 155, 159, 28, 231, 51, 79, 53, 176, 216, 184, 125, 151, 24, 247, 85, 220, 119, 23, 173, 116, 104, 240, 177, 117, 244, 22, 140, 109, 19, 106, 172, 167, 53, 163, 227, 71, 68, 216, 145, 171, 36, 87, 49, 84, 137, 20, 43, 21, 73, 29, 41, 162, 76, 198, 82, 243, 88, 158, 73, 178, 235, 99, 47, 130, 105, 140, 222, 117, 145, 136, 211, 96, 33, 142, 246, 104, 249, 26, 146, 111, 162, 3, 95, 160, 9, 124, 22, 62, 231, 31, 233, 233, 20, 67, 81, 75, 244, 98, 61, 53, 94, 230, 154, 70, 243, 233, 14, 3, 14, 59, 103, 8, 209, 248, 124, 118, 187, 47, 72, 184, 107, 73, 5, 157, 165, 160, 230, 132, 217, 26, 204, 144, 95, 233, 36, 210, 172, 153, 6, 233, 142, 157, 155, 35, 201, 147, 78, 3, 114, 40, 185, 26, 126, 75, 187, 164, 84, 102, 207, 228, 149, 202, 203, 102, 67, 91, 32, 74, 69, 198, 116, 62, 74, 169, 215, 217, 120, 218, 116, 38, 60, 118, 92, 226, 86, 138, 204, 104, 150, 84, 203, 67, 140, 251, 186, 177, 132, 67, 70, 36, 106, 166, 74, 140, 138, 99, 78, 19, 108, 93, 137, 176, 34, 169, 177, 118, 198, 57, 11, 228, 44, 2, 192, 35, 125, 1, 132, 206, 178, 205, 34, 66, 175, 62, 165, 38, 87, 203, 20, 153, 155, 110, 254, 8, 244, 121, 54, 129, 77, 39, 165, 112, 252, 123, 102, 154, 122, 101, 79, 14, 212, 98, 182, 79, 149, 201, 23, 39, 162, 215, 104, 224, 62, 250, 56, 94, 35, 86, 117, 161, 150, 160, 146, 232, 137, 117, 193, 74, 1, 108, 70, 164, 10, 203, 128, 187, 153, 10, 76, 114, 35, 217, 104, 9, 92, 6, 115, 0, 75, 237, 43, 114, 36, 74, 177, 144, 238, 5, 69, 110, 66, 43, 45, 93, 150, 185, 44, 164, 203, 159, 101, 42, 84, 220, 98, 125, 113, 40, 177, 114, 11, 106, 50, 80, 202, 213, 132, 3, 66, 68, 90, 237, 68, 136, 72, 104, 28, 67, 147, 28, 152, 36, 221, 15, 140, 5, 67, 148, 180, 32, 114, 137, 31, 50, 122, 66, 95, 147, 162, 183, 35, 39, 98, 56, 12, 165, 182, 88, 224, 165, 180, 86, 193, 150, 56, 209, 39, 77, 119, 84, 245, 160, 246, 88, 64, 170, 95, 4, 139, 101, 209, 211, 207, 198, 87, 233, 61, 214, 112, 15, 51, 131, 13, 177, 146, 32, 228, 86, 78, 217, 30, 229, 179, 159, 86, 172, 178, 4, 89, 147, 46, 68, 75, 98, 73, 133, 38, 6, 114, 22, 123, 35, 219, 34, 160, 54, 217, 144, 114, 47, 19, 34, 214, 87, 218, 219, 25, 133, 149, 118, 202, 219, 99, 178, 193, 210, 216, 215, 64, 205, 90, 170, 208, 72, 88, 209, 53, 210, 53, 80, 48, 109, 121, 77, 19, 42, 207, 253, 145, 158, 48, 41, 99, 48, 74, 242, 156, 212, 201, 112, 181, 51, 57, 85, 114, 69, 158, 60, 154, 2, 197, 170, 177, 32, 118, 228, 34, 5, 182, 50, 52, 238, 100, 218, 4, 201, 184, 4, 91, 99, 119, 176, 180, 173, 17, 166, 53, 84, 150, 20, 71, 64, 42, 37, 193, 1, 164, 84, 194, 221, 50, 57, 219, 108, 233, 252, 239, 166, 93, 79, 103, 138, 61, 69, 156, 105, 137, 107, 83, 27, 33, 243, 142, 129, 202, 71, 21, 109, 17, 178, 34, 64, 180, 178, 154, 217, 26, 202, 73, 211, 87, 202, 4, 107, 233, 44, 37, 88, 57, 192, 169, 73, 65, 118, 63, 96, 255, 0, 202, 92, 89, 72, 63, 104, 173, 10, 151, 142, 10, 116, 23, 18, 168, 12, 234, 13, 61, 85, 251, 7, 42, 11, 21, 80, 239, 100, 99, 85, 202, 129, 235, 24, 155, 236, 143, 141, 99, 210, 67, 134, 42, 252, 5, 246, 52, 76, 140, 14, 146, 16, 85, 219, 73, 6, 234, 75, 155, 32, 71, 157, 68, 208, 172, 170, 162, 84, 40, 15, 26, 131, 215, 2, 64, 117, 87, 162, 93, 104, 88, 214, 22, 17, 208, 228, 6, 184, 143, 173, 36, 50, 249, 105, 17, 158, 81, 209, 249, 250, 140, 250, 79, 247, 5, 43, 127, 210, 113, 167, 146, 113, 190, 181, 236, 12, 135, 182, 50, 71, 29, 109, 12, 108, 108, 132, 152, 41, 72, 138, 167, 78, 40, 4, 226, 58, 83, 5, 41, 10, 80, 20, 226, 10, 81, 9, 100, 129, 78, 69, 202, 147, 26, 7, 56, 15, 242, 17, 177, 232, 7, 192, 114, 136, 246, 39, 144, 244, 19, 192, 107, 67, 229, 98, 1, 59, 7, 160, 239, 49, 146, 152, 63, 33, 69, 164, 230, 53, 161, 200, 93, 1, 27, 24, 132, 140, 6, 164, 61, 1, 137, 20, 60, 108, 71, 0, 69, 203, 125, 50, 146, 118, 178, 243, 32, 162, 204, 90, 102, 156, 210, 165, 247, 5, 34, 251, 135, 12, 158, 171, 177, 27, 16, 70, 97, 173, 12, 144, 11, 3, 73, 140, 150, 136, 166, 142, 226, 10, 72, 146, 198, 77, 18, 16, 172, 35, 200, 157, 100, 8, 222, 208, 229, 52, 118, 193, 187, 9, 23, 67, 68, 57, 244, 92, 169, 162, 57, 129, 157, 135, 108, 20, 187, 25, 21, 220, 13, 89, 216, 142, 3, 37, 17, 132, 145, 201, 131, 168, 38, 128, 132, 66, 73, 9, 22, 61, 0, 54, 50, 8, 134, 56, 14, 128, 200, 68, 57, 177, 168, 230, 6, 13, 197, 78, 108, 54, 139, 75, 228, 87, 222, 57, 66, 159, 193, 136, 29, 179, 139, 210, 122, 98, 176, 73, 76, 12, 34, 195, 70, 39, 51, 64, 218, 108, 71, 22, 131, 177, 146, 16, 7, 200, 71, 48, 142, 8, 21, 154, 0, 5, 182, 12, 83, 22, 196, 55, 196, 12, 11, 166, 66, 159, 100, 187, 162, 70, 241, 28, 35, 82, 2, 224, 74, 72, 73, 68, 162, 71, 208, 158, 33, 156, 68, 72, 100, 20, 86, 130, 164, 116, 162, 53, 49, 144, 137, 11, 163, 162, 194, 33, 144, 94, 67, 211, 27, 56, 136, 132, 98, 166, 116, 152, 196, 196, 144, 192, 89, 12, 175, 180, 149, 121, 2, 233, 129, 163, 52, 32, 215, 49, 71, 163, 30, 142, 164, 57, 88, 5, 200, 28, 166, 99, 170, 74, 118, 3, 157, 164, 71, 112, 232, 118, 45, 51, 229, 99, 26, 216, 253, 12, 146, 16, 50, 64, 165, 49, 214, 48, 90, 24, 10, 201, 108, 12, 216, 91, 16, 41, 33, 145, 96, 63, 196, 72, 192, 124, 71, 40, 10, 81, 24, 144, 121, 32, 76, 180, 154, 35, 128, 230, 58, 32, 65, 104, 116, 102, 61, 160, 114, 136, 1, 6, 201, 9, 6, 57, 140, 140, 66, 72, 107, 144, 217, 76, 71, 1, 185, 149, 185, 72, 157, 108, 182, 65, 200, 3, 64, 219, 20, 93, 156, 1, 190, 149, 163, 22, 216, 232, 192, 52, 122, 49, 104, 108, 42, 208, 255, 0, 33, 178, 176, 99, 144, 16, 146, 144, 221, 129, 114, 23, 200, 96, 217, 177, 137, 142, 147, 17, 32, 6, 73, 9, 24, 14, 104, 36, 80, 2, 40, 13, 81, 12, 129, 63, 144, 128, 203, 16, 25, 196, 147, 98, 2, 205, 34, 66, 72, 230, 41, 204, 100, 237, 136, 36, 69, 99, 73, 175, 161, 118, 14, 115, 18, 18, 216, 3, 44, 64, 220, 191, 35, 172, 150, 129, 216, 37, 68, 92, 142, 136, 119, 88, 74, 185, 144, 44, 0, 25, 195, 118, 40, 141, 232, 72, 100, 152, 167, 25, 168, 198, 198, 54, 113, 194, 14, 76, 225, 14, 1, 74, 57, 28, 112, 193, 131, 142, 56, 1, 200, 20, 190, 69, 56, 8, 175, 224, 9, 199, 23, 8, 201, 28, 113, 197, 16, 108, 70, 206, 56, 105, 71, 180, 109, 79, 177, 14, 3, 18, 255, 0, 130, 60, 78, 56, 71, 17, 50, 72, 150, 28, 112, 0, 26, 56, 227, 128, 63, 255, 217]);
+
+// Helper function to safely parse a stringified Uint8List into an actual Uint8List
+Uint8List? parseUint8List(String? input) {
+  if (input == null || input.isEmpty) return null;
+
+  try {
+    final cleaned = input
+        .replaceAll('[', '')
+        .replaceAll(']', '')
+        .split(',')
+        .map((s) => int.parse(s.trim()))
+        .toList();
+    return Uint8List.fromList(cleaned);
+  } catch (e) {
+    print("Error parsing Uint8List: $e");
+    return null;
+  }
+}
+
+// Main Settings Page widget
+class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
  // Needs to transition to Jamie's version
+  @override
+  State<SettingsPage> createState() => _SettingsPageState();
+}
+
+// Widget to display user's username
+class UsernameDisplay extends StatelessWidget {
+  const UsernameDisplay({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final usser = Provider.of<Usser>(context);
+    return ListTile(
+      title: const Text("Username"),
+      subtitle: Text(usser.usserName),
+      leading: const Icon(Icons.person),
+    );
+  }
+}
+
+// Widget to display user's email
+class EmailDisplay extends StatelessWidget {
+  const EmailDisplay({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final usser = Provider.of<Usser>(context);
+    return ListTile(
+      title: const Text("Email"),
+      subtitle: Text(usser.email),
+      leading: const Icon(Icons.email),
+    );
+  }
+}
+
+// Widget to display user's currency balance
+class CurrencyDisplay extends StatelessWidget {
+  const CurrencyDisplay({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final usser = Provider.of<Usser>(context);
+    return ListTile(
+      title: const Text("Currency"),
+      subtitle: Text(usser.currancyTotal.toString()),
+      leading: const Icon(Icons.monetization_on),
+    );
+  }
+}
+
+// State class for the settings page
+class _SettingsPageState extends State<SettingsPage> {
+  bool _showThemeOptions = false; // Tracks whether theme options are visible
+
+  // Function to open the documentation link
+  Future<void> _openDocs() async {
+    final uri = Uri.parse(
+        'https://docs.google.com/document/d/1_YMfO3SsNhgeyioCx32rlcKOw77nXHue/edit?usp=sharing'
+    );
+    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not open documentation.'))
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text("Settings")),
-      body: Consumer<ThemeProvider>(
-        builder: (context, themeProvider, child) {
-          return Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text("Settings", style: Theme.of(context).textTheme.headlineSmall),
-                ListTile(
-                  title: const Text("Select Theme"),
-                  subtitle: Text(themeProvider.themeType.toString().split('.').last.toUpperCase()),
+
+      // Floating action button to open documentation
+      floatingActionButton: FloatingActionButton.extended(
+        icon: const Icon(Icons.description),
+        label: const Text('Documentation'),
+        onPressed: _openDocs,
+      ),
+
+      // Use Consumer2 to access both ThemeProvider and Usser objects
+      body: Consumer2<ThemeProvider, Usser>(
+        builder: (context, themeProvider, usser, child) {
+          return Stack(
+            children: [
+              // Top-left: Display user's current currency
+              Positioned(
+                top: 16,
+                left: 16,
+                child: Row(
+                  children: [
+                    const Icon(Icons.monetization_on, color: Colors.amber),
+                    const SizedBox(width: 4),
+                    Text(
+                      usser.currancyTotal.toString(),
+                      style: const TextStyle(
+                          fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                  ],
                 ),
-                RadioListTile<ThemeType>(
-                  title: const Text("Light Theme"),
-                  value: ThemeType.light,
-                  groupValue: themeProvider.themeType,
-                  onChanged: (ThemeType? value) {
-                    if (value != null) themeProvider.setTheme(value);
+              ),
+
+              // Top-right: Logout button
+              Positioned(
+                top: 16,
+                right: 16,
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
                   },
+                  child: Text('Logout'),
                 ),
-                RadioListTile<ThemeType>(
-                  title: const Text("Dark Theme"),
-                  value: ThemeType.dark,
-                  groupValue: themeProvider.themeType,
-                  onChanged: (ThemeType? value) {
-                    if (value != null) themeProvider.setTheme(value);
-                  },
-                ),
-                RadioListTile<ThemeType>(
-                  title: const Text("Custom Theme"),
-                  value: ThemeType.custom,
-                  groupValue: themeProvider.themeType,
-                  onChanged: (ThemeType? value) {
-                    if (value != null) themeProvider.setTheme(value);
-                  },
-                ),
-                if (themeProvider.themeType == ThemeType.custom) ...[
-                  const SizedBox(height: 16.0),
-                  ListTile(
-                    title: const Text('Surface Color'),
-                    trailing: CircleAvatar(backgroundColor: themeProvider.currentTheme.colorScheme.surface),
-                    onTap: () async {
-                      final Color? newColor = await _showColorPicker(context, themeProvider.currentTheme.colorScheme.surface);
-                      if (newColor != null) {
-                        themeProvider.setCustomTheme(surfaceColor: newColor, onSurfaceColor: themeProvider.currentTheme.colorScheme.onSurface);
-                      }
-                    },
+              ),
+
+              // Center: Main content (user info, theme options, etc.)
+              Center(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Username header
+                        Text(usser.usserName, style: Theme.of(context).textTheme.headlineSmall),
+                    
+                        const SizedBox(height: 16),
+                    
+                        // User profile photo
+                        ProfilePhotoWidget(
+                          initialImage: usser.profilePic != null
+                              ? parseUint8List(usser.profilePic!)
+                              : placeHolderImage,
+                        ),
+                    
+                        const SizedBox(height: 16),
+                    
+                        // Email display
+                        Text(usser.email, style: Theme.of(context).textTheme.bodyLarge),
+                    
+                        const SizedBox(height: 32),
+                    
+                        // Button to toggle theme options visibility
+                        ElevatedButton(
+                          onPressed: () {
+                            setState(() {
+                              _showThemeOptions = !_showThemeOptions;
+                            });
+                          },
+                          child: const Text("Themes"),
+                        ),
+                    
+                        // Display theme options if toggled
+                        if (_showThemeOptions) ...[
+                          const SizedBox(height: 16),
+                    
+                          // Current theme display
+                          ListTile(
+                            title: const Text("Current Theme"),
+                            subtitle: Text(themeProvider.themeType
+                                .toString()
+                                .split('.')
+                                .last
+                                .toUpperCase()),
+                          ),
+                    
+                          // Theme selection radios
+                          _themeRadio(ThemeType.light, "Light Theme", themeProvider),
+                          _themeRadio(ThemeType.dark, "Dark Theme", themeProvider),
+                          _themeRadio(ThemeType.custom, "Custom Theme", themeProvider),
+                    
+                          // Show color pickers if custom theme selected
+                          if (themeProvider.themeType == ThemeType.custom)
+                            ..._customColorPickers(themeProvider),
+                        ],
+                      ],
+                    ),
                   ),
-                  ListTile(
-                    title: const Text('Text Color'),
-                    trailing: CircleAvatar(backgroundColor:  themeProvider.currentTheme.colorScheme.onSurface),
-                    onTap: () async {
-                      final Color? newColor = await _showColorPicker(context,  themeProvider.currentTheme.colorScheme.onSurface);
-                      if (newColor != null) {
-                        themeProvider.setCustomTheme(surfaceColor: themeProvider.currentTheme.colorScheme.surface, onSurfaceColor: newColor);
-                      }
-                    },
-                  ),
-                ],
-              ],
-            ),
+                ),
+              ),
+            ],
           );
         },
       ),
     );
   }
 
+  // Helper to build a radio option for a theme
+  RadioListTile<ThemeType> _themeRadio(
+      ThemeType type, String label, ThemeProvider provider) {
+    return RadioListTile<ThemeType>(
+      title: Text(label),
+      value: type,
+      groupValue: provider.themeType,
+      onChanged: (value) {
+        if (value != null) provider.setTheme(value);
+      },
+    );
+  }
+
+  // Builds custom color picker widgets
+  List<Widget> _customColorPickers(ThemeProvider provider) {
+    return [
+      // Surface color picker
+      ListTile(
+        title: const Text('Surface Color'),
+        trailing: CircleAvatar(
+            backgroundColor: provider.currentTheme.colorScheme.surface),
+        onTap: () async {
+          final Color? newColor = await _showColorPicker(
+              context, provider.currentTheme.colorScheme.surface);
+          if (newColor != null) {
+            provider.setCustomTheme(
+              surfaceColor: newColor,
+              onSurfaceColor: provider.currentTheme.colorScheme.onSurface,
+            );
+          }
+        },
+      ),
+
+      // Text color picker
+      ListTile(
+        title: const Text('Text Color'),
+        trailing: CircleAvatar(
+            backgroundColor: provider.currentTheme.colorScheme.onSurface),
+        onTap: () async {
+          final Color? newColor = await _showColorPicker(
+              context, provider.currentTheme.colorScheme.onSurface);
+          if (newColor != null) {
+            provider.setCustomTheme(
+              surfaceColor: provider.currentTheme.colorScheme.surface,
+              onSurfaceColor: newColor,
+            );
+          }
+        },
+      ),
+    ];
+  }
+
+  // Opens a dialog to allow the user to pick a color
   Future<Color?> _showColorPicker(BuildContext context, Color currentColor) async {
     Color selectedColor = currentColor;
     return showDialog<Color>(
@@ -93,8 +284,12 @@ class SettingsPage extends StatelessWidget {
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
-          TextButton(onPressed: () => Navigator.of(context).pop(selectedColor), child: const Text('OK')),
+          TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel')),
+          TextButton(
+              onPressed: () => Navigator.of(context).pop(selectedColor),
+              child: const Text('OK')),
         ],
       ),
     );

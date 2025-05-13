@@ -6,6 +6,8 @@ import '../providers/projects_provider.dart';
 import '../providers/tasks_provider.dart';
 import '../Objects/task.dart';
 import '../projects/project_model.dart';
+import '../providers/user_provider.dart';
+import '../usser/usserObject.dart';
 
 // offline mode handler for app functionality without internet
 // [loads local mock data to simulate backend connectivity]
@@ -67,6 +69,8 @@ class OfflineModeHandler {
         default:
           taskStatus = Status.todo;
       }
+
+
       
       // convert string notification frequency to app enum
       NotificationFrequency notificationFreq;
@@ -107,19 +111,56 @@ class OfflineModeHandler {
     
     return tasks;
   }
-  
-  // primary entry point for offline mode 
-  // [call when connection fails or for testing]
+
+
+
+  static Future<List<Usser>> loadMockUsers() async {
+    String jsonString = await rootBundle.loadString('lib/offline_mode/mock_data/users.json');
+    Map<String, dynamic> jsonData = json.decode(jsonString);
+
+    List<Usser> users = [];
+
+    jsonData.forEach((key, userJson) {
+      users.add(Usser.fromJson(userJson));
+    });
+
+    return users;
+  }
+
+
+  // Load mock data into providers
   static Future<bool> loadMockData(BuildContext context) async {
-    // load projects first
+    // Load and set projects
+
+
     List<Project> projects = await loadMockProjects();
     Provider.of<ProjectsProvider>(context, listen: false).loadMockProjects(projects);
     
     // then load tasks that reference those projects
     List<Task> tasks = await loadMockTasks();
     Provider.of<TaskProvider>(context, listen: false).loadMockTasks(tasks);
+
+    print("loading users");
+
+    List<Usser> users = await loadMockUsers();
+    Usser mockUser = users.last;
+    Provider.of<Usser>(context, listen: false)
+      ..usserName = mockUser.usserName
+      ..email = mockUser.email
+      ..usserPassword = mockUser.usserPassword
+      ..theme = mockUser.theme
+      ..profilePic = mockUser.profilePic
+      ..currancyTotal = mockUser.currancyTotal
+      ..settings = mockUser.settings
+      ..tasks = mockUser.tasks;
     
     // all mock data loaded successfully
     return true;
   }
+
+
+
+
+
+
 }

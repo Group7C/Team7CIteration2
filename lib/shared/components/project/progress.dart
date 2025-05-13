@@ -4,6 +4,9 @@ import '../container_template.dart';
 import '../action_button.dart';
 import '../../../providers/tasks_provider.dart';
 import '../../../Objects/task.dart';
+import '../../../providers/projects_provider.dart';
+import '../../../contribution_report/contribution_report.dart';
+import '../../../contribution_report/pdf_util.dart';
 
 // displays project completion progress
 // [shows visual progress bar and task completion stats]
@@ -81,15 +84,69 @@ class ProgressComponent extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 20),
-          // button to access detailed task view
-          const Center(
-            child: ActionButton(
-              label: 'View Tasks',
-              icon: Icons.list_alt,
-            ),
+          // buttons row for actions
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              // button to access detailed task view
+              const ActionButton(
+                label: 'View Tasks',
+                icon: Icons.list_alt,
+              ),
+              // button to download contribution report
+              ActionButton(
+                label: 'Contribution Report',
+                icon: Icons.download,
+                onPressed: () => _downloadContributionReport(context),
+              ),
+            ],
           ),
         ],
       ),
     );
+  }
+  
+  // generates and downloads contribution report as pdf
+  Future<void> _downloadContributionReport(BuildContext context) async {
+    try {
+      // show loading indicator
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Generating report...'))
+      );
+      
+      // get current project
+      final projectsProvider = Provider.of<ProjectsProvider>(context, listen: false);
+      final project = projectsProvider.projects.firstWhere(
+        (project) => project.uuid == projectUuid,
+        orElse: () => throw Exception('Project not found'),
+      );
+      
+      // get tasks
+      final tasks = Provider.of<TaskProvider>(context, listen: false).tasks;
+      
+      // calculate contributions
+      final report = ContributionReport();
+      final contributions = await report.calculateProjectContribution(project, tasks);
+      
+      // generate pdf report
+      await PDFUtil.generateContributionReport(project, report.getRoundedContributions());
+      
+      // hide loading indicator
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Report generated successfully'))
+        );
+      }
+    } catch (e) {
+      // show error message
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error generating report: $e'))
+        );
+      }
+      print('Error downloading contribution report: $e');
+    }
   }
 }
