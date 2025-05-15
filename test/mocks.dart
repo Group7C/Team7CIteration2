@@ -45,7 +45,28 @@ class MockTaskProvider extends ChangeNotifier implements TaskProvider {
   @override
   List<Task> get tasks => _tasks;
   
-  // Add minimal implementations for required methods
+  @override
+  Task? getTask(String title) {
+    try {
+      return _tasks.firstWhere((task) => task.title == title);
+    } catch (e) {
+      return null;
+    }
+  }
+  
+  @override
+  void addTask(Task task) {
+    _tasks.add(task);
+    notifyListeners();
+  }
+  
+  @override
+  void removeTask(Task task) {
+    _tasks.remove(task);
+    notifyListeners();
+  }
+  
+  // Add minimal implementations for other required methods
   @override
   noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

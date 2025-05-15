@@ -1,0 +1,26 @@
+name: Tests for Task Features
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  task_tests:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Install Flutter SDK
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.27.3
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Run task tests
+        run: flutter test test/task_add_edit_tests/ test/task_edit_tests/ test/task_provider_test.dart test/task_screen_test.dart test/edit_task_screen_test.dart test/task_model_test.dart
