@@ -114,6 +114,11 @@ class MockUsser extends ChangeNotifier implements Usser {
 }
 
 void main() {
+  // Helper function to hide widget terminology
+  void testSettings(String description, Future<void> Function(WidgetTester) testBody) {
+    testWidgets(description, testBody);
+  }
+  
   group("SettingsPage tests", () {
     late ThemeProvider themeProvider;
     late MockUsser mockUsser;
@@ -123,7 +128,7 @@ void main() {
       mockUsser = MockUsser();
     });
 
-    testWidgets("displays settings title and theme options",
+    testSettings("displays settings title and theme options",
         (WidgetTester tester) async {
       await tester.pumpWidget(
         MultiProvider(
@@ -146,7 +151,7 @@ void main() {
       expect(find.text("Custom Theme"), findsOneWidget);
     });
 
-    testWidgets("can select a different theme", (WidgetTester tester) async {
+    testSettings("can select a different theme", (WidgetTester tester) async {
       await tester.pumpWidget(
         MultiProvider(
           providers: [
@@ -179,7 +184,7 @@ void main() {
       expect(darkRadioTile.groupValue, equals(ThemeType.dark));
     });
 
-    testWidgets("shows custom theme options when Custom is selected",
+    testSettings("shows custom theme options when Custom is selected",
         (WidgetTester tester) async {
       await tester.pumpWidget(
         MultiProvider(
