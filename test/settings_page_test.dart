@@ -114,7 +114,7 @@ class MockUsser extends ChangeNotifier implements Usser {
 }
 
 void main() {
-  group("SettingsPage widget tests", () {
+  group("SettingsPage tests", () {
     late ThemeProvider themeProvider;
     late MockUsser mockUsser;
 
