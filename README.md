@@ -20,4 +20,26 @@ A task management tool to help with the running and coordination of projects, an
 * **Shared elements**: Common widgets and utilities centralized in the shared folder
 * **Offline support**: Mock data available when no connection is detected
 
+### Exploring the project:
+
+```
+Team7CIteration2/
+│
+├── lib/                      # Main application code
+│   ├── main.dart             # Entry point
+│   ├── chat/                 # Chat functionality
+│   ├── contribution_report/  # Contribution tracking
+│   ├── home/                 # Home screen
+│   ├── kanban/               # Kanban board views
+│   ├── login/                # Login screens
+│   ├── models/               # Data models
+│   ├── services/             # API services
+│   ├── shared/               # Shared components
+│   └── [other feature folders]
+│
+├── assets/                   # Static resources
+└── database/                 # SQL files and schema
+```
+
+**Commenting**: Project-wide commenting style has been adopted for easy understanding of the code. Concise comments are paired with additional details in square brackets where useful.
 
